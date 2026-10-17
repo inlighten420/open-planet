@@ -11,22 +11,27 @@ param(
     [string]$Cache = (Join-Path $env:LOCALAPPDATA 'Geodrive\Cache'),
     [string]$Out = '',
     [string]$Share = 'D:\GeodriveShare',
-    [switch]$NoZip
+    [switch]$NoZip,
+    [string]$Project = (Join-Path (Split-Path $PSScriptRoot) 'Godot')	# (the Godot project beside this copy of the tools)
 )
-if ($Out -eq '') { $Out = "D:\GeodriveBuild\$Places\Geodrive" }
+if ($Out -eq '') { $Out = "D:\GeodriveBuild\$Places\Open-Planet" }
 $ErrorActionPreference = 'Stop'
 function Say($Text) { Write-Host ("[{0:HH:mm:ss}] {1}" -f (Get-Date), $Text) }
 
 # 1. the game: exported with the release template (the extension's release build beside it)
-if (-not (Test-Path 'C:\Geodrive\Godot\bin\geodrive.windows.template_release.x86_64.dll')) {
+if (-not (Test-Path (Join-Path $Project 'bin\geodrive.windows.template_release.x86_64.dll'))) {
     throw 'no release build of the extension: cmake --build C:/GeodriveData/godot/build_release --config Release'
 }
 Remove-Item $Out -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force $Out | Out-Null
+if (-not (Test-Path (Join-Path $Project '.godot'))) {
+    Say 'importing the project (its first time)'
+    & $Godot --headless --path $Project --import 2>&1 | Out-Null
+}
 Say 'exporting the game'
-& $Godot --headless --path C:\Geodrive\Godot --export-release 'Windows Desktop' (Join-Path $Out 'Geodrive.exe') 2>&1 |
+& $Godot --headless --path $Project --export-release 'Windows Desktop' (Join-Path $Out 'Open-Planet.exe') 2>&1 |
     Where-Object { $_ -match 'ERROR|error|savepack|export' } | ForEach-Object { Write-Host "  $_" }
-if (-not (Test-Path (Join-Path $Out 'Geodrive.pck'))) { throw 'export failed (no Geodrive.pck)' }
+if (-not (Test-Path (Join-Path $Out 'Open-Planet.pck'))) { throw 'export failed (no Open-Planet.pck)' }
 
 # 2. the map data: the regions (roads, buildings, places, airports, the world map), the heights (Copernicus 30 m),
 # the land cover and terrain fetched so far (the rest is fetched as you go, into the same folder)
@@ -80,9 +85,9 @@ Defence and Space GmbH 2014-2018, provided under COPERNICUS by the European Unio
 
 # 4. how to play
 @'
-GEODRIVE: the real world (OpenStreetMap, real heights and land cover) to walk, drive, fly, build and play games in.
+OPEN-PLANET: the real world (OpenStreetMap, real heights and land cover) to walk, drive, fly, build and play games in.
 
-START: unzip the whole folder anywhere (it's big: the map data's in "data"), then run Geodrive.exe.
+START: unzip the whole folder anywhere (it's big: the map data's in "data"), then run Open-Planet.exe.
 Nothing to install. Windows may ask once (an unknown app): More info, Run anyway.
 A gaming graphics card helps (made on a GTX 1070); Settings, Graphics to go lower.
 
@@ -132,13 +137,18 @@ Your settings and buildings are kept in %APPDATA%\Godot\app_userdata\Geodrive.
 Map data (c) OpenStreetMap contributors; terrain SRTM/Copernicus; land cover ESA WorldCover.
 '@ | Set-Content -Encoding UTF8 (Join-Path $Out 'HOW TO PLAY.txt')
 
+# (the licence, and where its source is: the AGPL asks for both with every copy)
+Copy-Item (Join-Path (Split-Path $PSScriptRoot) 'LICENSE') (Join-Path $Out 'LICENSE.txt')
+"Open-Planet is free software (AGPL-3.0, see LICENSE.txt). Its source: https://github.com/inlighten420/open-planet" |
+    Set-Content -Encoding UTF8 (Join-Path $Out 'SOURCE.txt')
+
 $Size = (Get-ChildItem $Out -Recurse | Measure-Object Length -Sum).Sum
 Say ("the game's ready in {0} ({1:N1} GB)" -f $Out, ($Size / 1GB))
 
 # 5. one zip to send
 if (-not $NoZip) {
     New-Item -ItemType Directory -Force $Share | Out-Null
-    $Zip = Join-Path $Share ("Geodrive-{0}-{1:yyyy-MM-dd}.zip" -f $Places.Replace('_', '-'), (Get-Date))
+    $Zip = Join-Path $Share ("Open-Planet-{0}-{1:yyyy-MM-dd}.zip" -f $Places.Replace('_', '-'), (Get-Date))
     Remove-Item $Zip -ErrorAction SilentlyContinue
     Say 'zipping (a few minutes)'
     Push-Location (Split-Path $Out)
