@@ -1,0 +1,11 @@
+{
+	"id": "308win",
+	"name": ".308 Winchester, 150 gr",
+	"grains": 150,
+	"bc": 0.387,
+	"muzzle": 860,
+	"zero": 100,
+	"sight_height": 0.045,
+	"magazine": 4,
+	"arrow": false
+}

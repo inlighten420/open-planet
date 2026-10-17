@@ -1,0 +1,18 @@
+{
+	"name": "US-DE",
+	"drive": "right",
+	"mph": true,
+	"urban_kmh": 40,
+	"speed_kmh": {
+		"trunk": 88,
+		"trunk_link": 80,
+		"primary": 80,
+		"secondary": 80,
+		"tertiary": 80,
+		"unclassified": 80,
+		"residential": 40,
+		"living_street": 40,
+		"service": 30
+	},
+	"about": "Default (unsigned) limits from the OpenStreetMap wiki's \"Default speed limits\" (via osm-legal-default-speeds, Tobias Zwick and contributors): residential district 25 mph, urban 25 mph, default 50 mph, rural 50 mph"
+}

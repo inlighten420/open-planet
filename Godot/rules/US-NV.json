@@ -1,0 +1,18 @@
+{
+	"name": "US-NV",
+	"drive": "right",
+	"mph": true,
+	"urban_kmh": 129,
+	"speed_kmh": {
+		"trunk": 129,
+		"trunk_link": 129,
+		"primary": 129,
+		"secondary": 129,
+		"tertiary": 129,
+		"unclassified": 129,
+		"residential": 129,
+		"living_street": 20,
+		"service": 30
+	},
+	"about": "Default (unsigned) limits from the OpenStreetMap wiki's \"Default speed limits\" (via osm-legal-default-speeds, Tobias Zwick and contributors): default 80 mph"
+}

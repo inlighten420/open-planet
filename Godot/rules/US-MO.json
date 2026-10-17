@@ -1,0 +1,20 @@
+{
+	"name": "US-MO",
+	"drive": "right",
+	"mph": true,
+	"urban_kmh": 97,
+	"speed_kmh": {
+		"motorway": 113,
+		"motorway_link": 97,
+		"trunk": 97,
+		"trunk_link": 97,
+		"primary": 97,
+		"secondary": 97,
+		"tertiary": 97,
+		"unclassified": 97,
+		"residential": 97,
+		"living_street": 20,
+		"service": 30
+	},
+	"about": "Default (unsigned) limits from the OpenStreetMap wiki's \"Default speed limits\" (via osm-legal-default-speeds, Tobias Zwick and contributors): default 60 mph, rural 60 mph"
+}

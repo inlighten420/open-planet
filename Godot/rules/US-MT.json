@@ -1,0 +1,20 @@
+{
+	"name": "US-MT",
+	"drive": "right",
+	"mph": true,
+	"urban_kmh": 40,
+	"speed_kmh": {
+		"motorway": 129,
+		"motorway_link": 113,
+		"trunk": 113,
+		"trunk_link": 113,
+		"primary": 113,
+		"secondary": 113,
+		"tertiary": 113,
+		"unclassified": 113,
+		"residential": 40,
+		"living_street": 20,
+		"service": 30
+	},
+	"about": "Default (unsigned) limits from the OpenStreetMap wiki's \"Default speed limits\" (via osm-legal-default-speeds, Tobias Zwick and contributors): urban 25 mph, default 70 mph, rural 70 mph"
+}

@@ -1,0 +1,57 @@
+{
+	"name": "Germany",
+	"drive": "right",
+	"mph": false,
+	"style": "europe",
+	"urban_kmh": 50,
+	"speed_kmh": {
+		"motorway": 130,
+		"motorway_link": 130,
+		"trunk": 130,
+		"trunk_link": 100,
+		"primary": 100,
+		"secondary": 100,
+		"tertiary": 100,
+		"unclassified": 100,
+		"residential": 50,
+		"living_street": 7,
+		"service": 30,
+		"pedestrian": 7,
+		"footway": 7
+	},
+	"sections": {
+		"motorway": [
+			2,
+			3.75,
+			2.5,
+			0.75
+		],
+		"trunk": [
+			2,
+			3.5,
+			1.5,
+			0.5
+		],
+		"primary": [
+			2,
+			3.5,
+			0.5
+		],
+		"secondary": [
+			2,
+			3.25,
+			0.25
+		],
+		"tertiary": [
+			2,
+			3.0,
+			0.0
+		],
+		"residential": [
+			2,
+			2.75,
+			0.0
+		]
+	},
+	"about": "Default (unsigned) limits from the OpenStreetMap wiki's \"Default speed limits\" (via osm-legal-default-speeds, Tobias Zwick and contributors): living street walk, urban 50, default 100, rural 100, motorway 130"
+}

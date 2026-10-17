@@ -1,0 +1,21 @@
+{
+	"name": "Wallonia",
+	"drive": "right",
+	"mph": false,
+	"urban_kmh": 50,
+	"speed_kmh": {
+		"motorway": 120,
+		"motorway_link": 120,
+		"trunk": 120,
+		"trunk_link": 90,
+		"primary": 90,
+		"secondary": 90,
+		"tertiary": 90,
+		"unclassified": 90,
+		"residential": 50,
+		"living_street": 20,
+		"service": 30,
+		"pedestrian": 7
+	},
+	"about": "Default (unsigned) limits from the OpenStreetMap wiki's \"Default speed limits\" (via osm-legal-default-speeds, Tobias Zwick and contributors): living street 20, urban 50, default 90, rural 90, motorway 120"
+}

@@ -1,0 +1,39 @@
+{
+	"id": "buffalo",
+	"name": "Cape buffalo",
+	"mass": 600,
+	"shoulder": 1.5,
+	"length": 2.8,
+	"walk": 1.2,
+	"run": 15,
+	"herd": [5, 15],
+	"diet": "grazer",
+	"colour": "#4b4542",
+	"horns": true,
+	"protected": true,
+	"season": [0, 0],
+	"bag": 0,
+	"shape": {
+		"head_up": 1.08,
+		"torso_depth": -1,
+		"back_slope": 0,
+		"ears": 1,
+		"horns": "pair",
+		"horn_length": 0.6,
+		"bend": [0.2, 1.55, 0.35, 0.35],
+		"mane": "none",
+		"long_tail": true,
+		"coat": "plain"
+	},
+	"behaviour": {
+		"browsing": 0,
+		"rests": false,
+		"meal": [60, 240],
+		"thirsty_after": [400, 800],
+		"hears": 400,
+		"wary": [15, 40],
+		"flees_for": [8, 15],
+		"prey": true,
+		"hunts": false
+	}
+}

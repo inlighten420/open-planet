@@ -1,0 +1,21 @@
+{
+	"name": "Mauritius",
+	"drive": "left",
+	"mph": false,
+	"urban_kmh": 60,
+	"speed_kmh": {
+		"trunk": 60,
+		"trunk_link": 60,
+		"primary": 80,
+		"secondary": 60,
+		"tertiary": 40,
+		"unclassified": 60,
+		"residential": 60,
+		"living_street": 20,
+		"service": 30,
+		"tertiary_link": 40,
+		"secondary_link": 60,
+		"primary_link": 80
+	},
+	"about": "Default (unsigned) limits from the OpenStreetMap wiki's \"Default speed limits\" (via osm-legal-default-speeds, Tobias Zwick and contributors): default 60"
+}

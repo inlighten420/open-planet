@@ -1,0 +1,18 @@
+{
+	"name": "United States Virgin Islands",
+	"drive": "left",
+	"mph": true,
+	"urban_kmh": 32,
+	"speed_kmh": {
+		"trunk": 56,
+		"trunk_link": 56,
+		"primary": 56,
+		"secondary": 56,
+		"tertiary": 56,
+		"unclassified": 56,
+		"residential": 32,
+		"living_street": 20,
+		"service": 30
+	},
+	"about": "Default (unsigned) limits from the OpenStreetMap wiki's \"Default speed limits\" (via osm-legal-default-speeds, Tobias Zwick and contributors): urban 20 mph, default 35 mph, rural 35 mph"
+}

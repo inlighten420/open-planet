@@ -1,0 +1,20 @@
+{
+	"name": "Venezuela",
+	"drive": "right",
+	"mph": false,
+	"urban_kmh": 40,
+	"speed_kmh": {
+		"motorway": 90,
+		"motorway_link": 90,
+		"trunk": 70,
+		"trunk_link": 70,
+		"primary": 70,
+		"secondary": 70,
+		"tertiary": 70,
+		"unclassified": 70,
+		"residential": 40,
+		"living_street": 20,
+		"service": 30
+	},
+	"about": "Default (unsigned) limits from the OpenStreetMap wiki's \"Default speed limits\" (via osm-legal-default-speeds, Tobias Zwick and contributors): urban 40, default 70, rural 70, motorway 90"
+}

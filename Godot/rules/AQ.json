@@ -1,0 +1,6 @@
+{
+	"name": "Antarctica",
+	"drive": "right",
+	"mph": false,
+	"about": "No national default limits recorded yet (the OpenStreetMap wiki's \"Default speed limits\" has none): the side only."
+}

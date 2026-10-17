@@ -1,0 +1,7 @@
+{
+	"name": "United Kingdom",
+	"drive": "left",
+	"mph": true,
+	"style": "uk",
+	"about": "The built-in style: DMRB and Manual for Streets cross-sections, national speed limits by road type (30 mph lit streets, 60 single carriageways, 70 dual carriageways and motorways, maxspeed:type codes), the Traffic Signs Manual's markings."
+}

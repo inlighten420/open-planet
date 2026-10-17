@@ -1,0 +1,21 @@
+{
+	"name": "US-AL",
+	"drive": "right",
+	"mph": true,
+	"urban_kmh": 48,
+	"speed_kmh": {
+		"motorway": 113,
+		"motorway_link": 72,
+		"trunk": 88,
+		"trunk_link": 88,
+		"primary": 88,
+		"secondary": 72,
+		"tertiary": 72,
+		"unclassified": 72,
+		"residential": 48,
+		"living_street": 20,
+		"service": 30,
+		"primary_link": 88
+	},
+	"about": "Default (unsigned) limits from the OpenStreetMap wiki's \"Default speed limits\" (via osm-legal-default-speeds, Tobias Zwick and contributors): urban 30 mph, default 45 mph, rural 45 mph"
+}

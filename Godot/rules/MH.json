@@ -1,0 +1,18 @@
+{
+	"name": "Marshall Islands",
+	"drive": "right",
+	"mph": true,
+	"urban_kmh": 40,
+	"speed_kmh": {
+		"trunk": 64,
+		"trunk_link": 64,
+		"primary": 64,
+		"secondary": 64,
+		"tertiary": 64,
+		"unclassified": 64,
+		"residential": 40,
+		"living_street": 20,
+		"service": 30
+	},
+	"about": "Default (unsigned) limits from the OpenStreetMap wiki's \"Default speed limits\" (via osm-legal-default-speeds, Tobias Zwick and contributors): urban 25 mph, default -, rural 40 mph"
+}

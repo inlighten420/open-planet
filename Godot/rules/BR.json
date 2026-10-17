@@ -1,0 +1,33 @@
+{
+	"name": "Brazil",
+	"drive": "right",
+	"mph": false,
+	"urban_kmh": 100,
+	"urban_speed_kmh": {
+		"service": 30,
+		"residential": 30,
+		"unclassified": 30,
+		"tertiary": 40,
+		"tertiary_link": 40,
+		"trunk": 60,
+		"trunk_link": 60,
+		"primary": 60,
+		"primary_link": 60,
+		"secondary": 60,
+		"secondary_link": 60,
+		"motorway": 80,
+		"motorway_link": 80
+	},
+	"speed_kmh": {
+		"trunk": 100,
+		"trunk_link": 100,
+		"primary": 100,
+		"secondary": 100,
+		"tertiary": 100,
+		"unclassified": 100,
+		"residential": 30,
+		"living_street": 20,
+		"service": 30
+	},
+	"about": "Default (unsigned) limits from the OpenStreetMap wiki's \"Default speed limits\" (via osm-legal-default-speeds, Tobias Zwick and contributors): default 100"
+}

@@ -1,0 +1,22 @@
+{
+	"name": "Mexico",
+	"drive": "right",
+	"mph": false,
+	"urban_kmh": 50,
+	"speed_kmh": {
+		"trunk": 80,
+		"trunk_link": 80,
+		"primary": 80,
+		"secondary": 30,
+		"tertiary": 30,
+		"unclassified": 30,
+		"residential": 20,
+		"living_street": 20,
+		"service": 20,
+		"pedestrian": 20,
+		"secondary_link": 30,
+		"tertiary_link": 30,
+		"primary_link": 80
+	},
+	"about": "Default (unsigned) limits from the OpenStreetMap wiki's \"Default speed limits\" (via osm-legal-default-speeds, Tobias Zwick and contributors): urban 50, default 80, rural 80"
+}

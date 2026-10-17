@@ -1,0 +1,4 @@
+# Godot's own cache, the area files geotile writes (made from the map data), and the built extension
+.godot/
+areas/
+bin/

@@ -1,0 +1,19 @@
+{
+	"name": "Guyana",
+	"drive": "left",
+	"mph": true,
+	"urban_kmh": 48,
+	"speed_kmh": {
+		"trunk": 64,
+		"trunk_link": 64,
+		"primary": 97,
+		"secondary": 64,
+		"tertiary": 64,
+		"unclassified": 64,
+		"residential": 48,
+		"living_street": 20,
+		"service": 30,
+		"primary_link": 97
+	},
+	"about": "Default (unsigned) limits from the OpenStreetMap wiki's \"Default speed limits\" (via osm-legal-default-speeds, Tobias Zwick and contributors): urban 30 mph, default 40 mph, rural 40 mph"
+}

@@ -1,0 +1,11 @@
+{
+	"id": "243win",
+	"name": ".243 Winchester, 100 gr",
+	"grains": 100,
+	"bc": 0.405,
+	"muzzle": 902,
+	"zero": 100,
+	"sight_height": 0.045,
+	"magazine": 4,
+	"arrow": false
+}

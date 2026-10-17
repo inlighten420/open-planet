@@ -1,0 +1,20 @@
+{
+	"name": "Indonesia",
+	"drive": "left",
+	"mph": false,
+	"urban_kmh": 50,
+	"speed_kmh": {
+		"motorway": 100,
+		"motorway_link": 80,
+		"trunk": 80,
+		"trunk_link": 80,
+		"primary": 80,
+		"secondary": 80,
+		"tertiary": 80,
+		"unclassified": 80,
+		"residential": 30,
+		"living_street": 30,
+		"service": 30
+	},
+	"about": "Default (unsigned) limits from the OpenStreetMap wiki's \"Default speed limits\" (via osm-legal-default-speeds, Tobias Zwick and contributors): residential district 30, urban 50, default 80, rural 80"
+}

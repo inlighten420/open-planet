@@ -1,0 +1,20 @@
+{
+	"name": "US-IN",
+	"drive": "right",
+	"mph": true,
+	"urban_kmh": 48,
+	"speed_kmh": {
+		"motorway": 113,
+		"motorway_link": 88,
+		"trunk": 97,
+		"trunk_link": 88,
+		"primary": 88,
+		"secondary": 88,
+		"tertiary": 88,
+		"unclassified": 88,
+		"residential": 48,
+		"living_street": 20,
+		"service": 24
+	},
+	"about": "Default (unsigned) limits from the OpenStreetMap wiki's \"Default speed limits\" (via osm-legal-default-speeds, Tobias Zwick and contributors): urban 30 mph, default 55 mph, rural 55 mph"
+}

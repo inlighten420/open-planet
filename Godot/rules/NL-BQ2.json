@@ -1,0 +1,18 @@
+{
+	"name": "NL-BQ2",
+	"drive": "right",
+	"mph": false,
+	"urban_kmh": 20,
+	"speed_kmh": {
+		"trunk": 40,
+		"trunk_link": 40,
+		"primary": 40,
+		"secondary": 40,
+		"tertiary": 40,
+		"unclassified": 40,
+		"residential": 20,
+		"living_street": 20,
+		"service": 20
+	},
+	"about": "Default (unsigned) limits from the OpenStreetMap wiki's \"Default speed limits\" (via osm-legal-default-speeds, Tobias Zwick and contributors): urban 20, default 40, rural 40"
+}

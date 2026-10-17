@@ -1,0 +1,21 @@
+{
+	"name": "Flanders",
+	"drive": "right",
+	"mph": false,
+	"urban_kmh": 50,
+	"speed_kmh": {
+		"motorway": 120,
+		"motorway_link": 120,
+		"trunk": 120,
+		"trunk_link": 70,
+		"primary": 70,
+		"secondary": 70,
+		"tertiary": 70,
+		"unclassified": 70,
+		"residential": 50,
+		"living_street": 20,
+		"service": 30,
+		"pedestrian": 7
+	},
+	"about": "Default (unsigned) limits from the OpenStreetMap wiki's \"Default speed limits\" (via osm-legal-default-speeds, Tobias Zwick and contributors): living street 20, urban 50, default 70, rural 70, motorway 120"
+}

@@ -1,0 +1,18 @@
+{
+	"name": "US-AZ",
+	"drive": "right",
+	"mph": true,
+	"urban_kmh": 40,
+	"speed_kmh": {
+		"trunk": 105,
+		"trunk_link": 105,
+		"primary": 105,
+		"secondary": 105,
+		"tertiary": 105,
+		"unclassified": 105,
+		"residential": 40,
+		"living_street": 40,
+		"service": 30
+	},
+	"about": "Default (unsigned) limits from the OpenStreetMap wiki's \"Default speed limits\" (via osm-legal-default-speeds, Tobias Zwick and contributors): residential district 25 mph, urban 25 mph, default 65 mph, rural 65 mph"
+}

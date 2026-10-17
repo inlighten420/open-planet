@@ -1,0 +1,47 @@
+{
+	"id": "lion",
+	"name": "Lion",
+	"mass": 190,
+	"shoulder": 1.1,
+	"length": 2.5,
+	"walk": 1.2,
+	"run": 16,
+	"herd": [2, 5],
+	"diet": "carnivore",
+	"colour": "#c4aa7c",
+	"horns": false,
+	"protected": true,
+	"season": [0, 0],
+	"bag": 0,
+	"shape": {
+		"head_up": 0.95,
+		"torso_depth": -1,
+		"back_slope": 0,
+		"ears": 0.45,
+		"horns": "none",
+		"horn_length": -1,
+		"bend": [0.35, 0.2, 0.5, 0.1],
+		"mane": "lion",
+		"long_tail": true,
+		"coat": "countershade"
+	},
+	"behaviour": {
+		"browsing": 0,
+		"rests": true,
+		"meal": [60, 240],
+		"thirsty_after": [400, 800],
+		"hears": 400,
+		"wary": [15, 40],
+		"flees_for": [8, 15],
+		"prey": false,
+		"hunts": {
+			"every": [480, 900],
+			"within": 800,
+			"prey_up_to": 700,
+			"rush_from": 40,
+			"rush_for": 20,
+			"rush_speed": 1.25,
+			"feeds_for": [500, 700]
+		}
+	}
+}

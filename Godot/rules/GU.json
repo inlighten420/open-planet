@@ -1,0 +1,18 @@
+{
+	"name": "Guam",
+	"drive": "right",
+	"mph": true,
+	"urban_kmh": 72,
+	"speed_kmh": {
+		"trunk": 72,
+		"trunk_link": 72,
+		"primary": 72,
+		"secondary": 72,
+		"tertiary": 72,
+		"unclassified": 72,
+		"residential": 72,
+		"living_street": 20,
+		"service": 30
+	},
+	"about": "Default (unsigned) limits from the OpenStreetMap wiki's \"Default speed limits\" (via osm-legal-default-speeds, Tobias Zwick and contributors): default 45 mph"
+}

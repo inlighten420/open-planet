@@ -1,0 +1,26 @@
+{
+	"name": "Palestine",
+	"drive": "right",
+	"mph": false,
+	"urban_kmh": 50,
+	"urban_speed_kmh": {
+		"living_street": 25,
+		"service": 25,
+		"pedestrian": 25,
+		"residential": 25
+	},
+	"speed_kmh": {
+		"motorway": 110,
+		"motorway_link": 110,
+		"trunk": 80,
+		"trunk_link": 80,
+		"primary": 80,
+		"secondary": 80,
+		"tertiary": 80,
+		"unclassified": 80,
+		"residential": 25,
+		"living_street": 25,
+		"service": 25
+	},
+	"about": "Default (unsigned) limits from the OpenStreetMap wiki's \"Default speed limits\" (via osm-legal-default-speeds, Tobias Zwick and contributors): urban 50, default 80, rural 80, motorway 110"
+}

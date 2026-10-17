@@ -1,0 +1,38 @@
+{
+	"id": "zombie",
+	"name": "Zombie",
+	"mass": 70,
+	"shoulder": 1.45,
+	"length": 0.3,
+	"walk": 0.8,
+	"run": 2.2,
+	"herd": [1, 1],
+	"diet": "grazer",
+	"colour": "#7d8a6a",
+	"horns": false,
+	"protected": false,
+	"season": [1, 12],
+	"bag": 1000,
+	"shape": {
+		"frame": "upright",
+		"arms_forward": true,
+		"head_up": 1.08,
+		"ears": 1,
+		"long_tail": false,
+		"mane": "none",
+		"coat": "plain"
+	},
+	"behaviour": {
+		"browsing": 0,
+		"meal": [30, 120],
+		"thirsty_after": [0, 0],
+		"hears": 300,
+		"wary": [20, 40],
+		"prey": false,
+		"flees": false,
+		"wounds_to_drop": 4,
+		"vital": ["brain"],
+		"hunts": false,
+		"goes_for_people": { "within": 40, "speed": 1, "reach": 1, "gives_up": 120 }
+	}
+}
