@@ -2,6 +2,12 @@
 
 **Welcome to your virtual planet: a place where we can all connect, play, build and create.**
 
+### [⬇ Download for Windows (free, about 80 MB)](https://github.com/inlighten420/open-planet/releases/latest)
+
+Unzip it anywhere and run `Open-Planet.exe`; nothing to install. Choose **Play somewhere new**, click anywhere on the
+world map, and the game downloads that place and takes you there. (Windows may say it's an unknown app: More info, Run
+anyway.)
+
 Open-Planet is the whole real Earth, made from open map data. Pick anywhere on the globe and you arrive there: your
 own street, your own town, the real roads and the ground around them. Walk, drive, fly, hunt, race and play golf on
 the real courses. Build a house. Make your own games, creatures and props right inside the world, and play them all
