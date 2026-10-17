@@ -1,4 +1,4 @@
-// Geodrive tile tool - GPL (see Core/README.md)
+// Geodrive tile tool - AGPL-3.0 (see LICENSE)
 //
 // Reading the game's cached Overpass responses, and whole-file helpers. Tool only; the game has its own JSON reader.
 

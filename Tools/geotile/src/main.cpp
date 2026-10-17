@@ -1,4 +1,4 @@
-// Geodrive tile tool - GPL (see Core/README.md)
+// Geodrive tile tool - AGPL-3.0 (see LICENSE)
 //
 //   geotile selftest
 //   geotile pack  <osm2.json> <out.pmtiles> [level] [precision]

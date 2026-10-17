@@ -1,4 +1,4 @@
-// Geodrive Core - GPL (see Core/README.md)
+// Geodrive Core - AGPL-3.0 (see LICENSE)
 //
 // Little helpers for writing and reading packed numbers.
 // Everything is little-endian and fixed width or LEB128 varints, so every machine reads the same bytes.

@@ -1,4 +1,4 @@
-// Geodrive for Godot - GPL (see Core/README.md)
+// Geodrive for Godot - AGPL-3.0 (see LICENSE)
 //
 // GeodriveWheel: a steering wheel and pedals with force feedback, through Geodrive's engine-free Core (Core/GeoFFB:
 // the DirectInput device, the ~500 Hz force thread with the tyres' effects, driving a car from the wheel), the same

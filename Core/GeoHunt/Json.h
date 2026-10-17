@@ -1,4 +1,4 @@
-// Geodrive Core - GPL (see Core/README.md)
+// Geodrive Core - AGPL-3.0 (see LICENSE)
 //
 // JSON, as the game's data files are written (a pack's creatures and weapons): a value read from text, and written
 // back (an object a key a line, a short list on one line; numbers as short as they read back the same).

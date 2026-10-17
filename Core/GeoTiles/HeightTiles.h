@@ -1,4 +1,4 @@
-// Geodrive Core - GPL (see Core/README.md)
+// Geodrive Core - AGPL-3.0 (see LICENSE)
 //
 // Fine ground heights in 1 km squares of a national grid (England's LiDAR in the British National Grid), packed
 // one zstd frame per square in a PMTiles file like the map tiles. A square's tile id is ZxyToTileId(11, easting km,

@@ -1,4 +1,4 @@
-// Geodrive Core - GPL (see Core/README.md)
+// Geodrive Core - AGPL-3.0 (see LICENSE)
 //
 // Driving one of our cars with a steering wheel: how the wheel and pedals are set up (the settings a game saves),
 // turning their positions into the car's controls, and the car's state into the force command.

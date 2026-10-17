@@ -1,4 +1,4 @@
-// Geodrive Core - GPL (see Core/README.md)
+// Geodrive Core - AGPL-3.0 (see LICENSE)
 //
 // The meshes of an area's roads and buildings: road ribbons and junction surfaces (every corner on the shared road
 // surface), the skirts hanging from their edges, the gap paving between roads side by side, rounded dead ends, the

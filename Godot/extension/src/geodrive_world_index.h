@@ -1,4 +1,4 @@
-// Geodrive for Godot - GPL (see Core/README.md)
+// Geodrive for Godot - AGPL-3.0 (see LICENSE)
 //
 // GeodriveWorldIndex: what the world map shows, as the Unreal game reads it: every region's world index next to its
 // map archive (Cache/regions/*.world.json, made by geotile world from a country .osm.pbf): its towns (biggest first,

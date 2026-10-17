@@ -1,4 +1,4 @@
-// Geodrive Core - GPL (see Core/README.md)
+// Geodrive Core - AGPL-3.0 (see LICENSE)
 //
 // Tile format v0: the OSM ways of one z14 web-mercator tile (about 2 km across at Garden Route latitudes).
 //

@@ -1,4 +1,4 @@
-// Geodrive Core - GPL (see Core/README.md)
+// Geodrive Core - AGPL-3.0 (see LICENSE)
 //
 // The aircraft (GeoFlight/Flight.h) to look at: simple solid shapes, as the plants are, sized from the real ones of
 // their class: a fuselage lofted through rings, swept wings and tail as slabs, engines as tubes under the wings (the

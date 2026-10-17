@@ -1,4 +1,4 @@
-// Geodrive for Godot - GPL (see Core/README.md)
+// Geodrive for Godot - AGPL-3.0 (see LICENSE)
 //
 // GeodriveCarSound: the car's sound, synthesised live by Geodrive's Core (Core/GeoCar/CarSound: the engine firing into
 // its exhaust, turbo, pops, tyre squeal, road rumble and wind), the same synthesiser the Unreal game uses. Give it the

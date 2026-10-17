@@ -1,4 +1,4 @@
-// Geodrive Core - GPL (see Core/README.md)
+// Geodrive Core - AGPL-3.0 (see LICENSE)
 //
 // The British National Grid (OSGB36 / EPSG:27700): what the Environment Agency's LiDAR heights are gridded in.
 // WGS84 latitude/longitude (GPS, OpenStreetMap) to grid metres: a 7-parameter Helmert shift from WGS84 to the Airy

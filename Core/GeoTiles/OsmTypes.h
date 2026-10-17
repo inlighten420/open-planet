@@ -1,4 +1,4 @@
-// Geodrive Core - GPL (see Core/README.md)
+// Geodrive Core - AGPL-3.0 (see LICENSE)
 //
 // Plain OSM data the way Geodrive uses it: ways with their tags and node lists, and node positions.
 // Positions are whole numbers of 1e-7 degrees (OSM's own precision, about 1 cm), never floats.

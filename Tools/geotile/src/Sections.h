@@ -1,4 +1,4 @@
-// Geodrive tile tool - GPL (see Core/README.md)
+// Geodrive tile tool - AGPL-3.0 (see LICENSE)
 //
 // Real road cross-sections from 1 m LiDAR (geotile lidar --cell=1): every road of an area, every 10 m away from
 // junctions, from 15 m left to 15 m right of its middle, by road class and setting (town: buildings close by; country:

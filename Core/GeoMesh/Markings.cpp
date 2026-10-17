@@ -1,4 +1,4 @@
-// Geodrive Core - GPL (see Core/README.md)
+// Geodrive Core - AGPL-3.0 (see LICENSE)
 //
 // The lines painted on the roads. South Africa: SADC Road Traffic Signs Manual [V1] ch. 7 (dividing lines, no
 // overtaking lines from sight distance, yellow edge lines on surfaced shoulders, stop lines). UK: Traffic Signs Manual

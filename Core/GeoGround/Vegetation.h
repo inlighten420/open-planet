@@ -1,4 +1,4 @@
-// Geodrive Core - GPL (see Core/README.md)
+// Geodrive Core - AGPL-3.0 (see LICENSE)
 //
 // Where plants grow: a piece's vegetation map, 10 m cells over its box, saying how thick the trees, the shrubs and the
 // grass are in each, and what the land is. From the satellite's land cover where the host has it (ESA WorldCover, 10 m,

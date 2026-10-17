@@ -1,4 +1,4 @@
-// Geodrive Core - GPL (see Core/README.md)
+// Geodrive Core - AGPL-3.0 (see LICENSE)
 //
 // Everything known about the ground of one area: elevation, land cover from OSM, water levels, the roads' heights and
 // the road corridors carved into the ground (verges, kerbs and pavements in town, cuttings and embankments, the ground

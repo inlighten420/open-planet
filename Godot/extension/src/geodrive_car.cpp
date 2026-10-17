@@ -1,4 +1,4 @@
-// Geodrive for Godot - GPL (see Core/README.md)
+// Geodrive for Godot - AGPL-3.0 (see LICENSE)
 
 #include "geodrive_car.h"
 

@@ -1,4 +1,4 @@
-// Geodrive hunttest - GPL (see Core/README.md)
+// Geodrive hunttest - AGPL-3.0 (see LICENSE)
 //
 // Checks Core/GeoHunt: the law (the Western Cape's 2025 hunting notice for the Mossel Bay district, and the bow-hunting
 // guideline), the loads' flight against their published figures, where a shot lands on an animal, and half an hour of

@@ -1,4 +1,4 @@
-// Geodrive Core - GPL (see Core/README.md)
+// Geodrive Core - AGPL-3.0 (see LICENSE)
 //
 // What the steering wheel needs from the car, written by the physics each step and read by the force feedback loop
 // at its own rate (lock-free: each value on its own).

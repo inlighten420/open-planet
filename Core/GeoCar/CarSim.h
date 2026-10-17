@@ -1,4 +1,4 @@
-// Geodrive Core - GPL (see Core/README.md)
+// Geodrive Core - AGPL-3.0 (see LICENSE)
 //
 // One car's physics: suspension, tyres, wheels, drivetrain (engine, clutch, gearbox, differential), aero and the
 // assists (ABS, traction control). The game engine owns the rigid body and the collision world; each physics step it

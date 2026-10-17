@@ -1,4 +1,4 @@
-// Geodrive Core - GPL (see Core/README.md)
+// Geodrive Core - AGPL-3.0 (see LICENSE)
 //
 // Bodies made of parts. Each part is a shape (a box, a cylinder, a sphere; solid or a shell with a wall) of a real
 // material (steel, aluminium, glass, pine...), or a weighed lump (an engine, a person: a real mass in a box's room).

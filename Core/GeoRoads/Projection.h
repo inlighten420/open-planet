@@ -1,4 +1,4 @@
-// Geodrive Core - GPL (see Core/README.md)
+// Geodrive Core - AGPL-3.0 (see LICENSE)
 //
 // Local tangent-plane projection around an origin, using WGS84 radii of curvature at the origin. Error is ~0.2 m at
 // 1 km from the origin, plenty for a driving area. World axes as the game uses them: X north, Y east, in cm.

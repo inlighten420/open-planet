@@ -1,4 +1,4 @@
-// Geodrive for Godot - GPL (see Core/README.md)
+// Geodrive for Godot - AGPL-3.0 (see LICENSE)
 //
 // GeodriveCar: a car driven by Geodrive's engine-free Core (Core/GeoCar: suspension, tyres, drivetrain, assists) on a
 // Godot RigidBody3D. Each physics step it reads the body, sweeps a sphere down at each wheel, and pushes the forces

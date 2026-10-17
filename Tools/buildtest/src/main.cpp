@@ -1,4 +1,4 @@
-// Geodrive buildtest - GPL (see Core/README.md)
+// Geodrive buildtest - AGPL-3.0 (see LICENSE)
 //
 // Checks Core/GeoBuild: builds a double-storey house piece by piece (2 x 2 squares: foundations, walls with a door and
 // windows, a floor, stairs, walls again, a roof), checking what's held up and what isn't, what comes down when a piece

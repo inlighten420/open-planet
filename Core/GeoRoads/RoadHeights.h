@@ -1,4 +1,4 @@
-// Geodrive Core - GPL (see Core/README.md)
+// Geodrive Core - AGPL-3.0 (see LICENSE)
 //
 // Gives the whole road network its heights in one go, so slopes flow smoothly through every join and junction.
 

@@ -1,4 +1,4 @@
-// Geodrive Core - GPL (see Core/README.md)
+// Geodrive Core - AGPL-3.0 (see LICENSE)
 //
 // The game's cars, made in code: the RS 4.0 (after a Porsche 911 GT3 RS, the 991 of 2016), the Formula car, the
 // Hatchback 1.6 (after a Suzuki Swift Sport) and the Bakkie 3.0 TDi (after a 2007 Isuzu KB300 TDi LX double cab), each

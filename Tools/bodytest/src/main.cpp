@@ -1,4 +1,4 @@
-// Geodrive bodytest - GPL (see Core/README.md)
+// Geodrive bodytest - AGPL-3.0 (see LICENSE)
 //
 // Checks Core/GeoBody against answers worked out by hand (the textbook's): what things weigh, how they turn, how they
 // fall, spin and float. Prints each check and its result; exits 1 if any is off.

@@ -1,4 +1,4 @@
-// Geodrive Core - GPL (see Core/README.md)
+// Geodrive Core - AGPL-3.0 (see LICENSE)
 //
 // Cars made in code (no imported models): the building blocks (smooth lofted bodies, wheels, wings, tubes, boxes) and
 // the cars built from them, each with its wheels, cameras, physics setup and engine sound. Every shape goes into one

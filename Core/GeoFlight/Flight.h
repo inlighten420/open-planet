@@ -1,4 +1,4 @@
-// Geodrive Core - GPL (see Core/README.md)
+// Geodrive Core - AGPL-3.0 (see LICENSE)
 //
 // Aircraft: a rigid body in the air and on its wheels. Lift grows with the wing's angle to the air until it stalls,
 // flaps add lift and drag, drag grows towards the speed of sound, the engines spool up and lose thrust as the air

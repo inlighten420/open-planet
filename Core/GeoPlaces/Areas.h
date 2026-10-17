@@ -1,4 +1,4 @@
-// Geodrive Core - GPL (see Core/README.md)
+// Geodrive Core - AGPL-3.0 (see LICENSE)
 //
 // The ready-made areas to drive, each with named places to start at or teleport to (the car goes to the road nearest
 // the place). Degrees.

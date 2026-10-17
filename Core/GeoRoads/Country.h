@@ -1,4 +1,4 @@
-// Geodrive Core - GPL (see Core/README.md)
+// Geodrive Core - AGPL-3.0 (see LICENSE)
 //
 // A country's road rules, as much as the roads need: which side traffic keeps to, whether limits are signed in mph,
 // the speed limit an unsigned road has, how wide its lanes and shoulders are, and how its lines are painted. The game

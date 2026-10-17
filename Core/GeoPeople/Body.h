@@ -1,4 +1,4 @@
-// Geodrive Core - GPL (see Core/README.md)
+// Geodrive Core - AGPL-3.0 (see LICENSE)
 //
 // A person: their measures from their height, and how they walk. Everything is scaled from a 1.75 m person by human
 // proportions: the eyes at 0.936 of the height standing and 0.45 above a seat; steps 0.41 of it long; speeds by the

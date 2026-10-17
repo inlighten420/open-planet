@@ -1,4 +1,4 @@
-// Geodrive Godot extension - GPL (see Core/README.md)
+// Geodrive Godot extension - AGPL-3.0 (see LICENSE)
 //
 // A game's rules (Core's GeoGame) for Godot: loaded from its area's "rules", started, told what happens and how time
 // goes; what it says taken; its score, time and end read.

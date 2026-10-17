@@ -1,4 +1,4 @@
-// Geodrive Core - GPL (see Core/README.md)
+// Geodrive Core - AGPL-3.0 (see LICENSE)
 //
 // Plants made in code: a few shapes of tree and bush, each a trunk and a crown of solid lumpy blobs (broadleaf, gum,
 // bush) or cones (conifer), the same every time for the same seed. Solid, not cards of leaves with holes: far cheaper

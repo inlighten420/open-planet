@@ -1,4 +1,4 @@
-// Geodrive Core - GPL (see Core/README.md)
+// Geodrive Core - AGPL-3.0 (see LICENSE)
 //
 // A game's rules: what happens when, as its file says (a pack's area's "rules"), no code. Each rule a when and what's
 // done then; the game kept (its score, its time, its timer, what's been killed and how often someone's been caught)

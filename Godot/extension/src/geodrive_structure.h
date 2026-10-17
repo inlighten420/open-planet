@@ -1,4 +1,4 @@
-// Geodrive Godot extension - GPL (see Core/README.md)
+// Geodrive Godot extension - AGPL-3.0 (see LICENSE)
 //
 // A building in Godot: Core's structure (GeoBuild/Build.h: pieces on a grid that stand while something holds them up)
 // drawn and made solid. Its node is the structure's anchor, turned to its heading; points are given in its own frame

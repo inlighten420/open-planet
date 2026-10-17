@@ -1,4 +1,4 @@
-// Geodrive Core - GPL (see Core/README.md)
+// Geodrive Core - AGPL-3.0 (see LICENSE)
 //
 // The road scan: drives every road the way the car would feel it, on the surface the wheels touch (the road meshes and
 // the ground under them), sampling every 50 cm along each road's centre and both wheel tracks. It finds jolts (a step

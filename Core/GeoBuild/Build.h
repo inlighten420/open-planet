@@ -1,4 +1,4 @@
-// Geodrive Core - GPL (see Core/README.md)
+// Geodrive Core - AGPL-3.0 (see LICENSE)
 //
 // Building, as a game like Rust has it: pieces on a grid, each snapping to its place beside, on or over the others,
 // that stand only while something holds them up. A structure is one grid (3 m squares, 3 m storeys) anchored on the

@@ -1,4 +1,4 @@
-// Geodrive tile tool - GPL (see Core/README.md)
+// Geodrive tile tool - AGPL-3.0 (see LICENSE)
 //
 // An area's roads at their real heights as a glTF binary (.glb) for a Godot client to load, built entirely by the
 // engine-free Core (Core/GeoTiles to read the map, Core/GeoRoads for the network, heights and road surface) with

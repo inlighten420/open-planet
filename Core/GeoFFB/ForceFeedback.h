@@ -1,4 +1,4 @@
-// Geodrive Core - GPL (see Core/README.md)
+// Geodrive Core - AGPL-3.0 (see LICENSE)
 //
 // The wheel's own thread, running at about 500 Hz whatever the game's frame rate: it owns the device, reads it, and
 // turns the game's latest command (or, for our own cars, the car's telemetry straight from the physics) into forces,

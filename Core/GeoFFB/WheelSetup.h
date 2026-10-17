@@ -1,4 +1,4 @@
-// Geodrive Core - GPL (see Core/README.md)
+// Geodrive Core - AGPL-3.0 (see LICENSE)
 //
 // Setting the wheel up by pressing things: a pedal (press it all the way down and hold it: whichever axis moves most
 // becomes that pedal, its rest and fully pressed positions its calibration), and the wheel's own buttons and hats for the

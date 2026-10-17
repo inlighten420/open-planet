@@ -1,4 +1,4 @@
-// Geodrive Core - GPL (see Core/README.md)
+// Geodrive Core - AGPL-3.0 (see LICENSE)
 //
 // One steering wheel through DirectInput 8 (Windows): finds the first force-feedback game controller (or any game
 // controller, for input only), reads its axes and buttons and drives a constant force, a damper and a friction on

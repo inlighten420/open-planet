@@ -1,4 +1,4 @@
-// Geodrive Core - GPL (see Core/README.md)
+// Geodrive Core - AGPL-3.0 (see LICENSE)
 //
 // How a road of a given class and speed is allowed to be shaped, the way a road engineer would design it: how steep
 // it may climb, how gently crests and dips must be rounded, and how a side road levels out before it meets a bigger

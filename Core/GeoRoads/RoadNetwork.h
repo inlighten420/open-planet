@@ -1,4 +1,4 @@
-// Geodrive Core - GPL (see Core/README.md)
+// Geodrive Core - AGPL-3.0 (see LICENSE)
 //
 // The drivable road network from OSM ways: ways split at shared nodes, nearby nodes merged, widths, lanes, shoulders,
 // surfaces and speed limits from tags (SA Red Book / RTMC, or UK DMRB and Manual for Streets), bridges, tunnels and

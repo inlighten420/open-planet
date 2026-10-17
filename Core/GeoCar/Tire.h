@@ -1,4 +1,4 @@
-// Geodrive Core - GPL (see Core/README.md); the tyre equations follow Project Chrono's TMeasy (BSD-3, see Tire.cpp)
+// Geodrive Core - AGPL-3.0 (see LICENSE); the tyre equations follow Project Chrono's TMeasy (BSD-3, see Tire.cpp)
 //
 // The tyre: forces in the contact patch from load, slip and surface grip.
 

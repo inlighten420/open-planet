@@ -1,4 +1,4 @@
-// Geodrive Core - GPL (see Core/README.md)
+// Geodrive Core - AGPL-3.0 (see LICENSE)
 //
 // A pack's files, as Core reads and writes them (engine-free: every host reads them the same way): its creatures
 // (creatures/*.json: a creature, or a list; "like" starts one from another, only what differs given; its body's shape

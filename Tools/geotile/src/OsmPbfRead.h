@@ -1,4 +1,4 @@
-// Geodrive tile tool - GPL (see Core/README.md)
+// Geodrive tile tool - AGPL-3.0 (see LICENSE)
 //
 // Reads OSM's standard compact file format (.osm.pbf), as downloaded for whole countries (Geofabrik), keeping only
 // what the game builds from: the same ways the game asks the Overpass service for (roads, buildings, water, forest),

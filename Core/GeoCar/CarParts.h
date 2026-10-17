@@ -1,4 +1,4 @@
-// Geodrive Core - GPL (see Core/README.md)
+// Geodrive Core - AGPL-3.0 (see LICENSE)
 //
 // Cars as parts (GeoBody): what each is made of and where, so its mass, the share of its weight on each axle, how
 // high that weight sits and how hard it is to turn come from the car itself, not numbers typed in.

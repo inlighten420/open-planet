@@ -1,4 +1,4 @@
-// Geodrive Core - GPL (see Core/README.md)
+// Geodrive Core - AGPL-3.0 (see LICENSE)
 //
 // A Geodrive map archive: Geodrive tiles (TileCodec.h), each squeezed with zstd, in one PMTiles file.
 

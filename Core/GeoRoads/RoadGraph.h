@@ -1,4 +1,4 @@
-// Geodrive Core - GPL (see Core/README.md)
+// Geodrive Core - AGPL-3.0 (see LICENSE)
 //
 // The drivable road network the way the game builds it from OSM: roads (edges) between junctions and ends (nodes),
 // each road a line of points in world space (cm, x east / y north of the area's origin) with its width, class and

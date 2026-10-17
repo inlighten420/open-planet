@@ -1,4 +1,4 @@
-// Geodrive Core - GPL (see Core/README.md)
+// Geodrive Core - AGPL-3.0 (see LICENSE)
 //
 // Tyre model: a simplified port of the TMeasy equations from Project Chrono
 // (src/chrono_vehicle/wheeled_vehicle/tire/ChTMeasyTire.cpp), BSD-3-Clause.

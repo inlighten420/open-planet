@@ -1,4 +1,4 @@
-// Geodrive Core - GPL (see Core/README.md)
+// Geodrive Core - AGPL-3.0 (see LICENSE)
 //
 // Plain mesh data as Core builds it: triangles with their own three corners (positions in world cm, x north, y east,
 // z up), per-corner normals, colours (linear) and UVs. The float vectors are laid out as three / four / two floats, the

@@ -1,4 +1,4 @@
-// Geodrive Core - GPL (see Core/README.md)
+// Geodrive Core - AGPL-3.0 (see LICENSE)
 //
 // Baked roads: the solved height profile of every road piece, so a game doesn't have to run the road solver itself
 // (the slowest part of building an area). The ways themselves stay in the OSM tiles; this only adds heights.

@@ -1,4 +1,4 @@
-// Geodrive Core - GPL (see Core/README.md)
+// Geodrive Core - AGPL-3.0 (see LICENSE)
 //
 // Joins the roads of a newly built piece of the world to the roads already loaded from the piece before it. Both are
 // solved separately, so the same road comes out a little higher or lower in each. Inside the squares already loaded

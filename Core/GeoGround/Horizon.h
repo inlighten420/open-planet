@@ -1,4 +1,4 @@
-// Geodrive Core - GPL (see Core/README.md)
+// Geodrive Core - AGPL-3.0 (see LICENSE)
 //
 // The far horizon: plain ground out to the view distance, beyond the pieces of the world that are built (a piece is some
 // 8-16 km across, so without this the land ends a few km away). Heights only, from a coarse height raster (Terrarium

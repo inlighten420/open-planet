@@ -1,4 +1,4 @@
-// Geodrive Core - GPL (see Core/README.md)
+// Geodrive Core - AGPL-3.0 (see LICENSE)
 //
 // A car: its setup (tyres, axles, engine, gearbox, aero), the driver's controls, and what the simulation publishes.
 // SI units (m, kg, N, s, rad/s) unless a field says otherwise. Wheels: 0 front left, 1 front right, 2 rear left,

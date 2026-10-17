@@ -1,4 +1,4 @@
-// Geodrive Core - GPL (see Core/README.md)
+// Geodrive Core - AGPL-3.0 (see LICENSE)
 //
 // A robot test driver: drives the real car (the player's own, same physics and tyres) along routes through the road
 // network like a sensible fast driver, and records everything a real driver would hate: the car leaving the ground,

@@ -1,4 +1,4 @@
-// Geodrive Godot extension - GPL (see Core/README.md)
+// Geodrive Godot extension - AGPL-3.0 (see LICENSE)
 //
 // A hunt on a game farm in Godot: Core's animals (GeoHunt/Hunt.h: their days, their bodies, the law, the loads) on
 // the farm's ground, drawn as multimeshes of their rounded parts (a fine and a coarse mesh by how near they look,

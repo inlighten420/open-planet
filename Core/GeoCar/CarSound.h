@@ -1,4 +1,4 @@
-// Geodrive Core - GPL (see Core/README.md)
+// Geodrive Core - AGPL-3.0 (see LICENSE)
 //
 // The car's sound, synthesised live (no recordings): each cylinder fires at its crank angle into its exhaust bank, whose
 // pipe rings at its own resonances (EngineSound says which engine: flat six, V8, turbo diesel...), with the intake, a

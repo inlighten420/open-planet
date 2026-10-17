@@ -1,4 +1,4 @@
-// Geodrive Core - GPL (see Core/README.md)
+// Geodrive Core - AGPL-3.0 (see LICENSE)
 //
 // The elevation of an area: a raster stitched from Terrarium tiles (Web Mercator, 256 px; AWS Terrain Tiles: SRTM on
 // land, ETOPO1 at sea), with better base heights where a lat/lon heights archive has them (Copernicus GLO-30: the

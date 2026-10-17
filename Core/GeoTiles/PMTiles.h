@@ -1,4 +1,4 @@
-// Geodrive Core - GPL (see Core/README.md)
+// Geodrive Core - AGPL-3.0 (see LICENSE)
 //
 // PMTiles v3: many tiles in one file, found by a small directory at the start.
 // Any plain web server (or free static hosting) can serve it, because a reader only asks for byte ranges.

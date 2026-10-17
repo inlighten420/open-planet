@@ -1,4 +1,4 @@
-// Geodrive Godot extension - GPL (see Core/README.md)
+// Geodrive Godot extension - AGPL-3.0 (see LICENSE)
 //
 // An aircraft in Godot: Core's flight model (GeoFlight/Flight.h) flown in Godot's world. Each physics step it asks
 // Core to fly on with the pilot's controls, answering Core's "what's along this line" with Godot's ray casts (the

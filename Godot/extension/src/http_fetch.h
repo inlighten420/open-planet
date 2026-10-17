@@ -1,4 +1,4 @@
-// Geodrive Godot client - GPL (see Core/README.md)
+// Geodrive Godot client - AGPL-3.0 (see LICENSE)
 
 #pragma once
 

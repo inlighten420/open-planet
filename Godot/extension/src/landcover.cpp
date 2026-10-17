@@ -1,4 +1,4 @@
-// Geodrive Godot client - GPL (see Core/README.md)
+// Geodrive Godot client - AGPL-3.0 (see LICENSE)
 //
 // ESA WorldCover's files are Cloud-Optimised GeoTIFFs: 36000 x 36000 pixels (1/12000 degree) over 3 x 3 degrees, in
 // 1024-pixel tiles, each compressed (zlib) on its own, the tiles' places listed at the start of the file. So the start

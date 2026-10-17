@@ -1,4 +1,4 @@
-// Geodrive Godot extension - GPL (see Core/README.md)
+// Geodrive Godot extension - AGPL-3.0 (see LICENSE)
 
 #include "geodrive_game.h"
 

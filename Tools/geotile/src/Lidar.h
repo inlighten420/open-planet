@@ -1,4 +1,4 @@
-// Geodrive tile tool - GPL (see Core/README.md)
+// Geodrive tile tool - AGPL-3.0 (see LICENSE)
 //
 // England's LiDAR ground heights (Environment Agency, National LIDAR Programme composite DTM, 1 m, Open Government
 // Licence v3) for an area, packed as fine height tiles (Core/GeoTiles/HeightTiles.h) for the game to use instead of

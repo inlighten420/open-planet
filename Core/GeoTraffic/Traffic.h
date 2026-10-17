@@ -1,4 +1,4 @@
-// Geodrive Core - GPL (see Core/README.md)
+// Geodrive Core - AGPL-3.0 (see LICENSE)
 //
 // Traffic: cars on the same physics as the player's, driving the real roads around them. Each keeps to the left lane at
 // the speed limit, slows for bends, eases up before giving way to a bigger road, keeps a gap to whatever is ahead

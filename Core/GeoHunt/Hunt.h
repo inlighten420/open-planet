@@ -1,4 +1,4 @@
-// Geodrive Core - GPL (see Core/README.md)
+// Geodrive Core - AGPL-3.0 (see LICENSE)
 //
 // Hunting on a game farm: its animals (real species, their real sizes and speeds), what the law allows to be hunted
 // there (the Western Cape's annual hunting notice for the farm's district; the bow-hunting guideline's minimum arrow

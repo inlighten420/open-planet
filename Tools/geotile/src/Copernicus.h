@@ -1,4 +1,4 @@
-// Geodrive tile tool - GPL (see Core/README.md)
+// Geodrive tile tool - AGPL-3.0 (see LICENSE)
 //
 // Copernicus GLO-30 heights (ESA/DLR/Airbus WorldDEM, ~30 m, 2011-2015; free on AWS Open Data) for an area, packed as
 // height tiles on a latitude/longitude grid of 1 arc-second (HeightTiles.h, zoom 14 ids: 120 arc-second squares), for

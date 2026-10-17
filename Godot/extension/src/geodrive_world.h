@@ -1,4 +1,4 @@
-// Geodrive for Godot - GPL (see Core/README.md)
+// Geodrive for Godot - AGPL-3.0 (see LICENSE)
 //
 // GeodriveWorld: the real world built by Geodrive's engine-free Core and streamed in as you drive, the way the Unreal
 // game does it. A new area builds its first piece (Core/GeoWorld: a box ~12 km across) on a worker thread; then, round

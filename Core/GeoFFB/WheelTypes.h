@@ -1,4 +1,4 @@
-// Geodrive Core - GPL (see Core/README.md)
+// Geodrive Core - AGPL-3.0 (see LICENSE)
 //
 // A steering wheel (and its pedals): what it reports, what the game asks it to do, and how its loop is getting on.
 

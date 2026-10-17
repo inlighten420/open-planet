@@ -1,4 +1,4 @@
-// Geodrive tile tool - GPL (see Core/README.md)
+// Geodrive tile tool - AGPL-3.0 (see LICENSE)
 //
 // Writes OSM's standard compact file format (.osm.pbf) - only for comparing sizes against our tiles.
 // Spec: https://wiki.openstreetmap.org/wiki/PBF_Format

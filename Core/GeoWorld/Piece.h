@@ -1,4 +1,4 @@
-// Geodrive Core - GPL (see Core/README.md)
+// Geodrive Core - AGPL-3.0 (see LICENSE)
 //
 // One piece of the world (a box some 8-16 km across), built in one go on a worker thread: the map data read out of a
 // country's archive, the heights, the road network solved and (next to a piece already loaded) joined to it at the

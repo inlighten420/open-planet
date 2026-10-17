@@ -1,4 +1,4 @@
-// Geodrive Godot client - GPL (see Core/README.md)
+// Geodrive Godot client - AGPL-3.0 (see LICENSE)
 //
 // What this game itself uses, for the overlay: its memory (Windows' private bytes for this process: everything it has
 // allocated, Godot and the world's C++ pieces and caches, apart from other programs) and its share of the processor.

@@ -22,6 +22,7 @@ It's early. A lot is still to do, and that's the point of opening it: come and b
 - **The game:** `Godot/` (Godot 4.7). How to build and run it: [Godot/README.md](Godot/README.md).
 - **The engine-free core** (roads, ground, car physics, games): `Core/`. See [Core/README.md](Core/README.md).
 - **The map tools** (OpenStreetMap to tiles): `Tools/geotile/`. Adding a region: [docs/ADD_A_REGION.md](docs/ADD_A_REGION.md).
+- **How it works** (how the world loads without stuttering, how games and sharing work, where it could go): [docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md).
 - **Playing with friends** (no servers yet: one of you hosts): [docs/MULTIPLAYER.md](docs/MULTIPLAYER.md).
 - **Making creatures and game packs:** [docs/MAKE_A_CREATURE.md](docs/MAKE_A_CREATURE.md).
 

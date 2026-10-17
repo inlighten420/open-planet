@@ -1,4 +1,4 @@
-// Geodrive cartest - GPL (see Core/README.md)
+// Geodrive cartest - AGPL-3.0 (see LICENSE)
 //
 // A test track in Core, no game engine: each car on its parts (CarMotion: the shared motion) on flat, dry tarmac,
 // timed as a road test would: 0-100 and 0-200 km/h, its top speed, its stop from 100 km/h, and the most it corners at
