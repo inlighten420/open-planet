@@ -1,0 +1,20 @@
+{
+	"name": "Namibia",
+	"drive": "left",
+	"mph": false,
+	"urban_kmh": 60,
+	"speed_kmh": {
+		"motorway": 120,
+		"motorway_link": 120,
+		"trunk": 100,
+		"trunk_link": 100,
+		"primary": 100,
+		"secondary": 100,
+		"tertiary": 100,
+		"unclassified": 100,
+		"residential": 60,
+		"living_street": 20,
+		"service": 30
+	},
+	"about": "Default (unsigned) limits from the OpenStreetMap wiki's \"Default speed limits\" (via osm-legal-default-speeds, Tobias Zwick and contributors): urban 60, default 100, rural 100, motorway 120"
+}

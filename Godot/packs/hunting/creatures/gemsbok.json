@@ -1,0 +1,39 @@
+{
+	"id": "gemsbok",
+	"name": "Gemsbok",
+	"mass": 210,
+	"shoulder": 1.2,
+	"length": 1.9,
+	"walk": 1.2,
+	"run": 16,
+	"herd": [4, 10],
+	"diet": "grazer",
+	"colour": "#bfb6ad",
+	"horns": true,
+	"protected": false,
+	"season": [1, 12],
+	"bag": 10,
+	"shape": {
+		"head_up": 1.08,
+		"torso_depth": -1,
+		"back_slope": 0,
+		"ears": 1,
+		"horns": "pair",
+		"horn_length": 0.85,
+		"bend": [0.55, 0.1, 0.55, 0.1],
+		"mane": "none",
+		"long_tail": false,
+		"coat": "mask"
+	},
+	"behaviour": {
+		"browsing": 0,
+		"rests": false,
+		"meal": [60, 240],
+		"thirsty_after": [400, 800],
+		"hears": 400,
+		"wary": [15, 40],
+		"flees_for": [8, 15],
+		"prey": true,
+		"hunts": false
+	}
+}

@@ -1,0 +1,6 @@
+Road textures from ambientCG (https://ambientcg.com), CC0 1.0 Universal (public domain): free to use, change
+and share, no credit needed (credited here anyway).
+
+asphalt_color.jpg, asphalt_normal.jpg   Asphalt031 (1K)
+paving_color.jpg, paving_normal.jpg     PavingStones070 (1K)
+gravel_color.jpg, gravel_normal.jpg     Ground079S (1K)

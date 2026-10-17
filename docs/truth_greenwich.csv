@@ -1,0 +1,63 @@
+section,graph,class,context,stat
+height,SRTM,trunk,open,"mean 1.00, median 0.57, 95% 3.45, worst 7.11, bias +0.51 (4877)"
+height,SRTM,trunk,junction,"mean 0.51, median 0.36, 95% 1.56, worst 4.06, bias +0.07 (2705)"
+grade,SRTM,trunk,all,"mean 1.28, median 0.66, 95% 4.24, worst 24.82, bias +0.03 (5181)"
+height,SRTM,primary,open,"mean 0.40, median 0.27, 95% 1.21, worst 3.56, bias +0.11 (2368)"
+height,SRTM,primary,junction,"mean 0.35, median 0.25, 95% 1.05, worst 4.29, bias +0.03 (3773)"
+grade,SRTM,primary,all,"mean 0.65, median 0.33, 95% 2.09, worst 24.66, bias +0.02 (3217)"
+height,SRTM,secondary,open,"mean 0.46, median 0.33, 95% 1.44, worst 4.05, bias +0.18 (1613)"
+height,SRTM,secondary,junction,"mean 0.41, median 0.29, 95% 1.22, worst 3.37, bias +0.14 (2368)"
+grade,SRTM,secondary,all,"mean 0.79, median 0.42, 95% 2.13, worst 23.99, bias +0.01 (2599)"
+height,SRTM,tertiary,open,"mean 0.46, median 0.28, 95% 1.43, worst 7.06, bias +0.10 (3847)"
+height,SRTM,tertiary,junction,"mean 0.44, median 0.28, 95% 1.33, worst 6.35, bias +0.07 (3657)"
+grade,SRTM,tertiary,all,"mean 0.71, median 0.40, 95% 2.08, worst 31.58, bias -0.00 (5048)"
+height,SRTM,residential,open,"mean 0.40, median 0.23, 95% 1.30, worst 8.55, bias -0.03 (27823)"
+height,SRTM,residential,junction,"mean 0.38, median 0.23, 95% 1.17, worst 8.64, bias +0.02 (31446)"
+grade,SRTM,residential,all,"mean 0.83, median 0.48, 95% 2.80, worst 34.97, bias -0.00 (39893)"
+height,SRTM,service,open,"mean 0.41, median 0.23, 95% 1.39, worst 12.08, bias -0.02 (10821)"
+height,SRTM,service,junction,"mean 0.33, median 0.20, 95% 1.06, worst 7.13, bias +0.02 (15929)"
+grade,SRTM,service,all,"mean 1.10, median 0.65, 95% 3.61, worst 31.95, bias -0.06 (13811)"
+height,SRTM,other,open,"mean 0.54, median 0.46, 95% 1.40, worst 1.57, bias -0.24 (57)"
+height,SRTM,other,junction,"mean 0.10, median 0.08, 95% 0.14, worst 0.24, bias +0.10 (7)"
+grade,SRTM,other,all,"mean 1.37, median 1.10, 95% 3.52, worst 3.57, bias -1.31 (41)"
+junction_spread,SRTM,all,all,"mean 0.00, median 0.00, 95% 0.00, worst 0.00, bias +0.00 (5150)"
+junction_error,SRTM,all,all,"mean 0.37, median 0.24, 95% 1.17, worst 8.40, bias +0.03 (5150)"
+height,LiDAR,trunk,open,"mean 0.59, median 0.35, 95% 1.93, worst 6.21, bias +0.14 (4877)"
+height,LiDAR,trunk,junction,"mean 0.35, median 0.23, 95% 1.03, worst 4.09, bias +0.03 (2705)"
+grade,LiDAR,trunk,all,"mean 1.14, median 0.54, 95% 4.01, worst 24.56, bias +0.03 (5181)"
+height,LiDAR,primary,open,"mean 0.23, median 0.13, 95% 0.79, worst 4.16, bias +0.05 (2368)"
+height,LiDAR,primary,junction,"mean 0.20, median 0.12, 95% 0.60, worst 4.31, bias +0.00 (3773)"
+grade,LiDAR,primary,all,"mean 0.59, median 0.29, 95% 1.88, worst 24.52, bias +0.00 (3217)"
+height,LiDAR,secondary,open,"mean 0.28, median 0.18, 95% 0.87, worst 4.31, bias +0.08 (1613)"
+height,LiDAR,secondary,junction,"mean 0.25, median 0.16, 95% 0.81, worst 3.50, bias +0.05 (2368)"
+grade,LiDAR,secondary,all,"mean 0.69, median 0.34, 95% 1.83, worst 23.68, bias +0.01 (2599)"
+height,LiDAR,tertiary,open,"mean 0.25, median 0.13, 95% 0.83, worst 5.58, bias +0.00 (3847)"
+height,LiDAR,tertiary,junction,"mean 0.25, median 0.14, 95% 0.84, worst 4.90, bias -0.01 (3657)"
+grade,LiDAR,tertiary,all,"mean 0.62, median 0.34, 95% 1.92, worst 31.39, bias -0.00 (5048)"
+height,LiDAR,residential,open,"mean 0.22, median 0.10, 95% 0.71, worst 8.53, bias -0.03 (27823)"
+height,LiDAR,residential,junction,"mean 0.21, median 0.11, 95% 0.67, worst 8.61, bias -0.01 (31446)"
+grade,LiDAR,residential,all,"mean 0.72, median 0.40, 95% 2.43, worst 34.17, bias -0.01 (39893)"
+height,LiDAR,service,open,"mean 0.19, median 0.09, 95% 0.61, worst 9.89, bias -0.02 (10821)"
+height,LiDAR,service,junction,"mean 0.17, median 0.10, 95% 0.55, worst 5.31, bias -0.01 (15929)"
+grade,LiDAR,service,all,"mean 0.94, median 0.53, 95% 3.04, worst 29.34, bias -0.03 (13811)"
+height,LiDAR,other,open,"mean 0.31, median 0.16, 95% 0.82, worst 1.31, bias -0.18 (57)"
+height,LiDAR,other,junction,"mean 0.09, median 0.08, 95% 0.16, worst 0.19, bias +0.08 (7)"
+grade,LiDAR,other,all,"mean 0.63, median 0.52, 95% 1.46, worst 2.06, bias -0.34 (41)"
+junction_spread,LiDAR,all,all,"mean 0.00, median 0.00, 95% 0.00, worst 0.00, bias +0.00 (5150)"
+junction_error,LiDAR,all,all,"mean 0.20, median 0.11, 95% 0.68, worst 8.38, bias -0.00 (5150)"
+
+profile_from_edge_m,-8.0,-7.5,-7.0,-6.5,-6.0,-5.5,-5.0,-4.5,-4.0,-3.5,-3.0,-2.5,-2.0,-1.5,-1.0,-0.5,0.0,0.5,1.0,1.5,2.0,2.5,3.0,3.5,4.0,4.5,5.0,5.5,6.0,6.5,7.0,7.5,8.0,8.5,9.0,9.5,10.0,10.5,11.0,11.5,12.0
+trunk,0.2,0.0,-0.1,0.0,-0.3,0.0,-0.2,0.0,-0.2,0.0,0.0,0.0,0.3,0.8,1.2,1.8,2.3,3.0,4.0,5.0,5.6,6.4,7.3,8.1,8.0,8.1,7.9,7.8,7.6,7.2,7.3,7.3,7.2,7.5,8.8,9.3,11.7,13.0,10.1,9.9,14.9
+primary,nan,nan,0.0,-0.1,-0.3,0.0,0.0,-0.0,-0.1,0.0,-0.0,-0.1,-0.1,-0.1,-0.1,-0.1,0.0,0.3,0.5,1.0,1.7,2.2,3.1,4.2,5.4,6.4,7.5,8.3,9.2,10.4,10.9,11.5,12.2,12.8,13.1,13.7,13.9,13.9,14.3,14.5,3.7
+secondary,nan,nan,nan,nan,nan,nan,nan,nan,nan,0.0,0.0,0.0,0.1,0.2,0.4,0.6,0.9,1.5,2.2,3.2,4.3,5.6,7.0,8.5,10.1,11.7,13.2,14.5,15.7,17.1,18.1,18.9,19.5,20.4,21.1,21.9,21.9,21.8,21.4,21.8,21.6
+tertiary,nan,nan,nan,nan,nan,nan,0.0,0.0,0.1,0.0,0.0,0.0,0.2,0.3,0.4,0.7,1.1,1.6,2.2,3.0,3.8,4.7,5.7,6.7,7.7,8.8,9.6,10.3,10.9,11.2,11.6,12.0,12.3,12.5,12.6,12.7,12.8,13.0,12.8,12.3,12.3
+residential,nan,nan,nan,nan,nan,nan,nan,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.2,0.5,0.8,1.2,1.7,2.3,3.1,4.1,5.0,6.0,7.0,7.9,8.9,9.7,10.4,11.1,11.6,12.1,12.4,12.7,13.0,13.1,13.2,13.3,13.4,13.4,13.3
+service,nan,nan,nan,nan,nan,nan,nan,nan,nan,0.0,0.0,0.0,0.0,0.0,0.1,0.3,0.5,0.7,1.0,1.3,1.7,2.0,2.4,2.7,3.1,3.4,3.8,4.0,4.2,4.3,4.4,4.6,4.7,4.6,4.4,4.5,4.4,4.5,4.5,4.4,4.5
+
+profile_across_m,-15.0,-14.5,-14.0,-13.5,-13.0,-12.5,-12.0,-11.5,-11.0,-10.5,-10.0,-9.5,-9.0,-8.5,-8.0,-7.5,-7.0,-6.5,-6.0,-5.5,-5.0,-4.5,-4.0,-3.5,-3.0,-2.5,-2.0,-1.5,-1.0,-0.5,0.0,0.5,1.0,1.5,2.0,2.5,3.0,3.5,4.0,4.5,5.0,5.5,6.0,6.5,7.0,7.5,8.0,8.5,9.0,9.5,10.0,10.5,11.0,11.5,12.0,12.5,13.0,13.5,14.0,14.5,15.0
+trunk,16.6,17.3,16.7,16.3,16.1,15.6,15.2,14.5,13.9,13.3,11.8,10.9,9.2,8.3,7.5,6.9,5.6,4.2,3.0,1.4,0.3,-0.6,-1.6,-2.1,-2.3,-2.6,-2.4,-2.0,-1.5,-0.8,0.0,0.8,1.7,2.5,3.6,4.6,5.2,5.8,6.2,6.6,6.7,7.1,7.0,7.1,7.2,7.3,7.4,7.5,7.8,7.0,6.7,5.9,5.8,5.3,4.7,4.5,4.1,4.0,3.9,4.1,3.9
+primary,18.7,19.0,19.0,18.2,17.3,16.6,16.1,15.1,13.9,13.3,12.3,10.9,10.1,8.9,7.6,6.5,4.8,4.3,3.2,2.1,1.7,0.8,0.5,0.0,0.0,-0.3,-0.3,-0.3,-0.2,-0.1,0.0,0.1,0.1,0.1,-0.1,-0.2,-0.2,-0.2,-0.1,-0.0,-0.0,0.6,1.2,1.8,2.4,3.6,4.6,5.2,6.2,6.9,7.7,8.5,8.9,9.7,9.5,10.1,10.4,10.6,10.9,11.3,11.3
+secondary,23.0,22.9,22.7,22.8,23.7,23.3,22.9,22.1,21.8,21.1,20.5,19.3,18.6,17.1,15.3,13.6,11.9,10.5,8.9,7.2,5.7,4.6,3.4,2.6,1.9,1.3,0.9,0.6,0.4,0.2,0.0,-0.2,-0.2,-0.3,-0.3,-0.0,0.2,0.5,1.2,1.6,2.8,4.1,5.6,6.8,8.1,9.5,10.9,12.6,14.1,14.8,16.3,17.2,17.8,18.8,19.5,19.7,20.2,20.4,21.0,21.5,21.6
+tertiary,14.8,14.8,14.6,14.7,14.9,15.0,15.0,14.5,14.3,14.1,13.6,12.9,12.4,11.7,10.4,9.1,7.7,6.5,5.5,4.5,3.4,2.6,1.6,1.1,0.7,0.4,0.3,0.1,0.0,-0.0,0.0,0.0,0.2,0.5,0.8,1.2,1.7,2.1,2.8,3.6,4.6,5.2,6.3,7.2,8.0,8.3,8.7,9.1,9.5,9.7,10.2,10.1,10.3,9.9,10.2,10.2,10.5,10.2,9.8,9.4,9.0
+residential,14.6,14.5,14.5,14.6,14.6,14.5,14.4,14.1,13.8,13.5,12.9,12.4,11.8,11.1,10.3,9.3,8.4,7.3,6.2,5.2,4.2,3.2,2.4,1.7,1.3,0.9,0.6,0.3,0.2,0.0,0.0,0.0,0.1,0.2,0.4,0.7,1.2,1.6,2.2,3.0,3.9,4.7,5.7,6.7,7.5,8.4,9.1,9.9,10.5,10.9,11.3,11.5,11.7,11.8,11.9,12.0,11.9,12.0,12.0,12.0,11.8
+service,4.5,4.6,4.7,4.6,4.7,4.6,4.6,4.5,4.6,4.5,4.5,4.5,4.3,4.1,4.0,3.7,3.6,3.3,3.0,2.6,2.2,1.8,1.5,1.2,1.0,0.7,0.5,0.3,0.2,0.0,0.0,0.0,0.1,0.2,0.4,0.7,1.0,1.3,1.7,2.1,2.4,2.7,2.9,3.3,3.6,3.9,3.9,4.2,4.3,4.5,4.7,4.5,4.3,4.5,4.3,4.3,4.2,4.2,4.2,4.2,4.2

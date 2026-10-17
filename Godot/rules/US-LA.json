@@ -1,0 +1,20 @@
+{
+	"name": "US-LA",
+	"drive": "right",
+	"mph": true,
+	"urban_kmh": 88,
+	"speed_kmh": {
+		"motorway": 113,
+		"motorway_link": 113,
+		"trunk": 88,
+		"trunk_link": 88,
+		"primary": 88,
+		"secondary": 88,
+		"tertiary": 88,
+		"unclassified": 88,
+		"residential": 88,
+		"living_street": 20,
+		"service": 30
+	},
+	"about": "Default (unsigned) limits from the OpenStreetMap wiki's \"Default speed limits\" (via osm-legal-default-speeds, Tobias Zwick and contributors): default 55 mph, motorway 70 mph"
+}

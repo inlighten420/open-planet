@@ -1,0 +1,6 @@
+Ground textures from ambientCG (https://ambientcg.com), CC0 1.0 Universal (public domain): free to use, change
+and share, no credit needed (credited here anyway).
+
+grass_color.jpg, grass_normal.jpg   Grass004 (1K)
+sand_color.jpg, sand_normal.jpg     Ground054 (1K)
+rock_color.jpg, rock_normal.jpg     Rock051 (1K)

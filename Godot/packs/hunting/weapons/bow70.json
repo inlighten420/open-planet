@@ -1,0 +1,11 @@
+{
+	"id": "bow70",
+	"name": "Compound bow, 70 lb, 425 gr arrow",
+	"grains": 425,
+	"bc": 0,
+	"muzzle": 87,
+	"zero": 20,
+	"sight_height": 0.06,
+	"magazine": 1,
+	"arrow": true
+}

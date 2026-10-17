@@ -1,0 +1,20 @@
+{
+	"name": "Kazakhstan",
+	"drive": "right",
+	"mph": false,
+	"urban_kmh": 60,
+	"speed_kmh": {
+		"motorway": 140,
+		"motorway_link": 140,
+		"trunk": 110,
+		"trunk_link": 110,
+		"primary": 110,
+		"secondary": 110,
+		"tertiary": 110,
+		"unclassified": 110,
+		"residential": 60,
+		"living_street": 20,
+		"service": 30
+	},
+	"about": "Default (unsigned) limits from the OpenStreetMap wiki's \"Default speed limits\" (via osm-legal-default-speeds, Tobias Zwick and contributors): living street 20, urban 60, default 110, rural 110, motorway 140"
+}

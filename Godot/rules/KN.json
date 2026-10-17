@@ -1,0 +1,18 @@
+{
+	"name": "Saint Kitts and Nevis",
+	"drive": "left",
+	"mph": true,
+	"urban_kmh": 32,
+	"speed_kmh": {
+		"trunk": 64,
+		"trunk_link": 64,
+		"primary": 64,
+		"secondary": 64,
+		"tertiary": 64,
+		"unclassified": 64,
+		"residential": 32,
+		"living_street": 20,
+		"service": 30
+	},
+	"about": "Default (unsigned) limits from the OpenStreetMap wiki's \"Default speed limits\" (via osm-legal-default-speeds, Tobias Zwick and contributors): urban 20 mph, default 40 mph, rural 40 mph"
+}

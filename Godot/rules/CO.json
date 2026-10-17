@@ -1,0 +1,20 @@
+{
+	"name": "Colombia",
+	"drive": "right",
+	"mph": false,
+	"urban_kmh": 50,
+	"speed_kmh": {
+		"motorway": 120,
+		"motorway_link": 120,
+		"trunk": 90,
+		"trunk_link": 90,
+		"primary": 90,
+		"secondary": 90,
+		"tertiary": 90,
+		"unclassified": 90,
+		"residential": 30,
+		"living_street": 30,
+		"service": 30
+	},
+	"about": "Default (unsigned) limits from the OpenStreetMap wiki's \"Default speed limits\" (via osm-legal-default-speeds, Tobias Zwick and contributors): residential district 30, urban 50, default 90, rural 90, motorway 120"
+}

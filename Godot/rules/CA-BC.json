@@ -1,0 +1,18 @@
+{
+	"name": "British Columbia",
+	"drive": "right",
+	"mph": false,
+	"urban_kmh": 50,
+	"speed_kmh": {
+		"trunk": 80,
+		"trunk_link": 80,
+		"primary": 80,
+		"secondary": 80,
+		"tertiary": 80,
+		"unclassified": 80,
+		"residential": 50,
+		"living_street": 20,
+		"service": 30
+	},
+	"about": "Default (unsigned) limits from the OpenStreetMap wiki's \"Default speed limits\" (via osm-legal-default-speeds, Tobias Zwick and contributors): urban 50, default 80, rural 80"
+}

@@ -1,0 +1,36 @@
+{
+	"name": "Argentina",
+	"drive": "right",
+	"mph": false,
+	"urban_kmh": 110,
+	"urban_speed_kmh": {
+		"tertiary": 40,
+		"tertiary_link": 40,
+		"unclassified": 40,
+		"residential": 40,
+		"living_street": 40,
+		"pedestrian": 40,
+		"service": 40,
+		"track": 40,
+		"trunk": 60,
+		"trunk_link": 60,
+		"primary": 60,
+		"primary_link": 60,
+		"secondary": 60,
+		"secondary_link": 60
+	},
+	"speed_kmh": {
+		"motorway": 130,
+		"motorway_link": 130,
+		"trunk": 120,
+		"trunk_link": 120,
+		"primary": 110,
+		"secondary": 110,
+		"tertiary": 110,
+		"unclassified": 110,
+		"residential": 40,
+		"living_street": 40,
+		"service": 40
+	},
+	"about": "Default (unsigned) limits from the OpenStreetMap wiki's \"Default speed limits\" (via osm-legal-default-speeds, Tobias Zwick and contributors): default 110, rural 110, motorway 130"
+}

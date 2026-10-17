@@ -1,0 +1,39 @@
+{
+	"id": "blue_wildebeest",
+	"name": "Blue wildebeest",
+	"mass": 230,
+	"shoulder": 1.4,
+	"length": 2.2,
+	"walk": 1.2,
+	"run": 20,
+	"herd": [6, 20],
+	"diet": "grazer",
+	"colour": "#7c7c81",
+	"horns": true,
+	"protected": false,
+	"season": [1, 12],
+	"bag": 10,
+	"shape": {
+		"head_up": 1.08,
+		"torso_depth": -1,
+		"back_slope": 0,
+		"ears": 1,
+		"horns": "pair",
+		"horn_length": 0.5,
+		"bend": [0.1, 1.45, 0.2, 0.2],
+		"mane": "crest",
+		"long_tail": true,
+		"coat": "plain"
+	},
+	"behaviour": {
+		"browsing": 0,
+		"rests": false,
+		"meal": [60, 240],
+		"thirsty_after": [400, 800],
+		"hears": 400,
+		"wary": [15, 40],
+		"flees_for": [8, 15],
+		"prey": true,
+		"hunts": false
+	}
+}

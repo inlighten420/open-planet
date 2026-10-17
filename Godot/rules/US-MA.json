@@ -1,0 +1,18 @@
+{
+	"name": "US-MA",
+	"drive": "right",
+	"mph": true,
+	"urban_kmh": 48,
+	"speed_kmh": {
+		"trunk": 80,
+		"trunk_link": 64,
+		"primary": 64,
+		"secondary": 64,
+		"tertiary": 64,
+		"unclassified": 64,
+		"residential": 48,
+		"living_street": 48,
+		"service": 30
+	},
+	"about": "Default (unsigned) limits from the OpenStreetMap wiki's \"Default speed limits\" (via osm-legal-default-speeds, Tobias Zwick and contributors): residential district 30 mph, urban 30 mph, default 40 mph, rural 40 mph"
+}

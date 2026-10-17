@@ -1,0 +1,18 @@
+{
+	"name": "Dominican Republic",
+	"drive": "right",
+	"mph": false,
+	"urban_kmh": 35,
+	"speed_kmh": {
+		"trunk": 60,
+		"trunk_link": 60,
+		"primary": 60,
+		"secondary": 60,
+		"tertiary": 60,
+		"unclassified": 60,
+		"residential": 35,
+		"living_street": 20,
+		"service": 30
+	},
+	"about": "Default (unsigned) limits from the OpenStreetMap wiki's \"Default speed limits\" (via osm-legal-default-speeds, Tobias Zwick and contributors): urban 35, default 60, rural 60"
+}

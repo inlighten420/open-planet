@@ -1,0 +1,20 @@
+{
+	"name": "Azerbaijan",
+	"drive": "right",
+	"mph": false,
+	"urban_kmh": 60,
+	"speed_kmh": {
+		"motorway": 110,
+		"motorway_link": 110,
+		"trunk": 90,
+		"trunk_link": 90,
+		"primary": 90,
+		"secondary": 90,
+		"tertiary": 90,
+		"unclassified": 90,
+		"residential": 60,
+		"living_street": 20,
+		"service": 20
+	},
+	"about": "Default (unsigned) limits from the OpenStreetMap wiki's \"Default speed limits\" (via osm-legal-default-speeds, Tobias Zwick and contributors): living street 20, urban 60, default 90, rural 90, motorway 110"
+}

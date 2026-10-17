@@ -1,0 +1,22 @@
+{
+	"name": "Egypt",
+	"drive": "right",
+	"mph": false,
+	"urban_kmh": 60,
+	"speed_kmh": {
+		"trunk": 100,
+		"trunk_link": 100,
+		"primary": 90,
+		"secondary": 90,
+		"tertiary": 90,
+		"unclassified": 90,
+		"residential": 40,
+		"living_street": 40,
+		"service": 30,
+		"primary_link": 90,
+		"secondary_link": 90,
+		"motorway": 100,
+		"motorway_link": 100
+	},
+	"about": "Default (unsigned) limits from the OpenStreetMap wiki's \"Default speed limits\" (via osm-legal-default-speeds, Tobias Zwick and contributors): residential district 40, urban 60, default 90"
+}

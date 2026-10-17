@@ -1,0 +1,39 @@
+{
+	"id": "giraffe",
+	"name": "Giraffe",
+	"mass": 1000,
+	"shoulder": 3,
+	"length": 3,
+	"walk": 1.5,
+	"run": 15,
+	"herd": [3, 7],
+	"diet": "browser",
+	"colour": "#c8aa76",
+	"horns": true,
+	"protected": true,
+	"season": [0, 0],
+	"bag": 0,
+	"shape": {
+		"head_up": 1.62,
+		"torso_depth": 0.12,
+		"back_slope": 0.12,
+		"ears": 1,
+		"horns": "pair",
+		"horn_length": 0.15,
+		"bend": [0.05, 0.15, 0.05, 0.15],
+		"mane": "none",
+		"long_tail": true,
+		"coat": "patches"
+	},
+	"behaviour": {
+		"browsing": 1,
+		"rests": false,
+		"meal": [60, 240],
+		"thirsty_after": [400, 800],
+		"hears": 400,
+		"wary": [15, 40],
+		"flees_for": [8, 15],
+		"prey": true,
+		"hunts": false
+	}
+}

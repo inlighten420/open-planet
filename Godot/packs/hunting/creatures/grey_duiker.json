@@ -1,0 +1,39 @@
+{
+	"id": "grey_duiker",
+	"name": "Grey duiker",
+	"mass": 18,
+	"shoulder": 0.5,
+	"length": 0.95,
+	"walk": 1,
+	"run": 12,
+	"herd": [1, 1],
+	"diet": "browser",
+	"colour": "#ada089",
+	"horns": true,
+	"protected": false,
+	"season": [6, 7],
+	"bag": 1,
+	"shape": {
+		"head_up": 1.08,
+		"torso_depth": -1,
+		"back_slope": 0,
+		"ears": 1,
+		"horns": "pair",
+		"horn_length": -1,
+		"bend": [0.35, 0.2, 0.5, 0.1],
+		"mane": "none",
+		"long_tail": false,
+		"coat": "countershade"
+	},
+	"behaviour": {
+		"browsing": 1,
+		"rests": false,
+		"meal": [60, 240],
+		"thirsty_after": [400, 800],
+		"hears": 400,
+		"wary": [15, 40],
+		"flees_for": [8, 15],
+		"prey": true,
+		"hunts": false
+	}
+}

@@ -1,0 +1,39 @@
+{
+	"id": "red_hartebeest",
+	"name": "Red hartebeest",
+	"mass": 150,
+	"shoulder": 1.25,
+	"length": 2,
+	"walk": 1.2,
+	"run": 19,
+	"herd": [5, 12],
+	"diet": "grazer",
+	"colour": "#b37c55",
+	"horns": true,
+	"protected": false,
+	"season": [7, 8],
+	"bag": 1,
+	"shape": {
+		"head_up": 1.08,
+		"torso_depth": -1,
+		"back_slope": 0,
+		"ears": 1,
+		"horns": "pair",
+		"horn_length": 0.45,
+		"bend": [0.1, 0.35, 1.3, 0.1],
+		"mane": "none",
+		"long_tail": false,
+		"coat": "countershade"
+	},
+	"behaviour": {
+		"browsing": 0,
+		"rests": false,
+		"meal": [60, 240],
+		"thirsty_after": [400, 800],
+		"hears": 400,
+		"wary": [15, 40],
+		"flees_for": [8, 15],
+		"prey": true,
+		"hunts": false
+	}
+}

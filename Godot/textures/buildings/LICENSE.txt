@@ -1,0 +1,9 @@
+Building textures from ambientCG (https://ambientcg.com), CC0 1.0 Universal (public domain): free to use, change
+and share, no credit needed (credited here anyway).
+
+brick_color.jpg, brick_normal.jpg         Bricks085 (1K)
+plaster_color.jpg, plaster_normal.jpg     PaintedPlaster017 (1K)
+concrete_color.jpg, concrete_normal.jpg   Concrete034 (1K)
+stone_color.jpg, stone_normal.jpg         Bricks075A (1K)
+roof_color.jpg, roof_normal.jpg           Concrete031 (1K)
+planks_color.jpg, planks_normal.jpg       Planks037A (1K): the player's wooden pieces

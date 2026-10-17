@@ -1,0 +1,30 @@
+{
+	"name": "George quarantine zone",
+	"about": "The whole of George, from Blanco to Pacaltsdorp and Thembalethu: zombies all over it (a hundred round you wherever you go; the dead ones get up again elsewhere).",
+	"district": "George",
+	"fence": false,
+	"avoid_buildings": true,
+	"creatures_out": "playing",
+	"outline": [[-33.930, 22.400], [-33.930, 22.515], [-34.005, 22.515], [-34.005, 22.400]],
+	"gates": [
+		{ "name": "Ticket booth, York Street", "lat": -33.9631, "lon": 22.4617, "tickets": true }
+	],
+	"water": [],
+	"stock": [["zombie", 100]],
+	"spawn": { "around_people": true, "nearest": 60, "farthest": 150, "leave_past": 250, "dead_for": 30 },
+	"rules": [
+		{ "when": "kill", "of": "zombie", "then": [{ "do": "score", "by": 1 }] },
+		{ "when": "score", "reaches": 50, "then": [{ "do": "say", "text": "50 zombies down: George thanks you" }] }
+	],
+	"texts": {
+		"sign": "ZOMBIE\nSURVIVAL\n(E)",
+		"booth": "George quarantine zone\nSurvival tickets here",
+		"title": "%s: a survival ticket",
+		"law": false,
+		"note": "Take a weapon; you're in the zone already. Out of George and it's over. A head shot stops a zombie; four in the body do too.        Esc: not now",
+		"hint": "Zombie survival: E",
+		"start": "Survive George: %d zombies. Right click to aim, left click to shoot, R to reload",
+		"ticket": "Ticket for %s: %s. You're in the zone: watch out",
+		"end": "Out of %s: %s"
+	}
+}

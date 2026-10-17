@@ -1,0 +1,11 @@
+{
+	"id": "375hh",
+	"name": ".375 H&H Magnum, 300 gr",
+	"grains": 300,
+	"bc": 0.398,
+	"muzzle": 771,
+	"zero": 100,
+	"sight_height": 0.045,
+	"magazine": 3,
+	"arrow": false
+}

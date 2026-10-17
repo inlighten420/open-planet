@@ -1,0 +1,18 @@
+{
+	"name": "Isle of Man",
+	"drive": "left",
+	"mph": true,
+	"urban_kmh": 48,
+	"speed_kmh": {
+		"trunk": 97,
+		"trunk_link": 97,
+		"primary": 97,
+		"secondary": 97,
+		"tertiary": 97,
+		"unclassified": 97,
+		"residential": 48,
+		"living_street": 32,
+		"service": 30
+	},
+	"about": "Default (unsigned) limits from the OpenStreetMap wiki's \"Default speed limits\" (via osm-legal-default-speeds, Tobias Zwick and contributors): living street 20 mph, urban 30 mph, default 60 mph, rural 60 mph"
+}

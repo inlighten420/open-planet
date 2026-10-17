@@ -1,0 +1,18 @@
+{
+	"name": "Mongolia",
+	"drive": "right",
+	"mph": false,
+	"urban_kmh": 60,
+	"speed_kmh": {
+		"trunk": 80,
+		"trunk_link": 80,
+		"primary": 80,
+		"secondary": 80,
+		"tertiary": 80,
+		"unclassified": 80,
+		"residential": 60,
+		"living_street": 20,
+		"service": 30
+	},
+	"about": "Default (unsigned) limits from the OpenStreetMap wiki's \"Default speed limits\" (via osm-legal-default-speeds, Tobias Zwick and contributors): living street 20, urban 60, default 80, rural 80"
+}

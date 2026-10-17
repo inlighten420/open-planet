@@ -1,0 +1,39 @@
+{
+	"id": "zebra",
+	"name": "Plains zebra",
+	"mass": 300,
+	"shoulder": 1.35,
+	"length": 2.3,
+	"walk": 1.2,
+	"run": 17,
+	"herd": [5, 12],
+	"diet": "grazer",
+	"colour": "#c4c4c4",
+	"horns": false,
+	"protected": false,
+	"season": [1, 12],
+	"bag": 10,
+	"shape": {
+		"head_up": 1.08,
+		"torso_depth": -1,
+		"back_slope": 0,
+		"ears": 1,
+		"horns": "none",
+		"horn_length": -1,
+		"bend": [0.35, 0.2, 0.5, 0.1],
+		"mane": "crest",
+		"long_tail": true,
+		"coat": "stripes"
+	},
+	"behaviour": {
+		"browsing": 0,
+		"rests": false,
+		"meal": [60, 240],
+		"thirsty_after": [400, 800],
+		"hears": 400,
+		"wary": [15, 40],
+		"flees_for": [8, 15],
+		"prey": true,
+		"hunts": false
+	}
+}

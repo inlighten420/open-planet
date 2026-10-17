@@ -1,0 +1,8 @@
+{
+	"name": "Zombies",
+	"about": "Survive George: the whole town's a quarantine zone. Book a ticket at the booth on York Street, take a weapon, and keep away from the zombies. A head shot stops one, or four in the body. They catch you and you're down: up again by your car.",
+	"sources": [
+		"Made only from files, no code: a person's build (an upright frame), a zombie's behaviour (goes for people, doesn't run from shots, only the brain vital), the town's outline and the booth.",
+		"The weapons are the hunting pack's."
+	]
+}

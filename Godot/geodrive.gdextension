@@ -1,0 +1,10 @@
+[configuration]
+
+entry_symbol = "geodrive_library_init"
+compatibility_minimum = "4.7"
+reloadable = true
+
+[libraries]
+
+windows.debug.x86_64 = "res://bin/geodrive.windows.template_debug.x86_64.dll"
+windows.release.x86_64 = "res://bin/geodrive.windows.template_release.x86_64.dll"

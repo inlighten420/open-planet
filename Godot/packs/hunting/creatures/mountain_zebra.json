@@ -1,0 +1,39 @@
+{
+	"id": "mountain_zebra",
+	"name": "Cape mountain zebra",
+	"mass": 250,
+	"shoulder": 1.25,
+	"length": 2.1,
+	"walk": 1.2,
+	"run": 17,
+	"herd": [3, 7],
+	"diet": "grazer",
+	"colour": "#c8c8c7",
+	"horns": false,
+	"protected": true,
+	"season": [0, 0],
+	"bag": 0,
+	"shape": {
+		"head_up": 1.08,
+		"torso_depth": -1,
+		"back_slope": 0,
+		"ears": 1,
+		"horns": "none",
+		"horn_length": -1,
+		"bend": [0.35, 0.2, 0.5, 0.1],
+		"mane": "crest",
+		"long_tail": true,
+		"coat": "stripes"
+	},
+	"behaviour": {
+		"browsing": 0,
+		"rests": false,
+		"meal": [60, 240],
+		"thirsty_after": [400, 800],
+		"hears": 400,
+		"wary": [15, 40],
+		"flees_for": [8, 15],
+		"prey": true,
+		"hunts": false
+	}
+}

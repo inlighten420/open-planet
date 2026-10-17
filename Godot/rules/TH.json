@@ -1,0 +1,20 @@
+{
+	"name": "Thailand",
+	"drive": "left",
+	"mph": false,
+	"urban_kmh": 80,
+	"speed_kmh": {
+		"motorway": 100,
+		"motorway_link": 90,
+		"trunk": 100,
+		"trunk_link": 90,
+		"primary": 90,
+		"secondary": 90,
+		"tertiary": 90,
+		"unclassified": 90,
+		"residential": 80,
+		"living_street": 20,
+		"service": 30
+	},
+	"about": "Default (unsigned) limits from the OpenStreetMap wiki's \"Default speed limits\" (via osm-legal-default-speeds, Tobias Zwick and contributors): urban 80, default 90, rural 90"
+}

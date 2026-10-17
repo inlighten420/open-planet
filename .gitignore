@@ -1,0 +1,46 @@
+# Unreal generated folders (rebuilt automatically)
+Binaries/
+DerivedDataCache/
+Intermediate/
+Saved/
+.vs/
+.vscode/
+.idea/
+
+# IDE / solution files (regenerate via right-click .uproject > Generate Visual Studio project files)
+*.sln
+*.slnx
+*.suo
+*.opensdf
+*.sdf
+*.VC.db
+*.VC.opendb
+.vsconfig
+
+# Build artifacts
+*.pdb
+*.obj
+*.exe
+*.dll
+
+# Plugin build output
+Plugins/**/Binaries/
+Plugins/**/Intermediate/
+
+# OS junk
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Unreal packaging logs
+/Build/
+
+# geotile build output
+Tools/geotile/bin/
+Tools/geotile/obj/
+Tools/bodytest/bin/
+Tools/bodytest/obj/
+Tools/cartest/bin/
+Tools/cartest/obj/
+Tools/buildtest/bin/
+Tools/buildtest/obj/

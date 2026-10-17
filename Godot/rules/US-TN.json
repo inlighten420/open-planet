@@ -1,0 +1,18 @@
+{
+	"name": "US-TN",
+	"drive": "right",
+	"mph": true,
+	"urban_kmh": 105,
+	"speed_kmh": {
+		"trunk": 105,
+		"trunk_link": 105,
+		"primary": 105,
+		"secondary": 105,
+		"tertiary": 105,
+		"unclassified": 105,
+		"residential": 105,
+		"living_street": 20,
+		"service": 30
+	},
+	"about": "Default (unsigned) limits from the OpenStreetMap wiki's \"Default speed limits\" (via osm-legal-default-speeds, Tobias Zwick and contributors): default 65 mph, rural 65 mph"
+}
