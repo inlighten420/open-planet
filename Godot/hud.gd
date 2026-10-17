@@ -123,7 +123,7 @@ func toggle_shown() -> void:
 
 func set_shown(on: bool) -> void:
 	shown = on
-	for label in [speed_label, gear_label, street_label, status_label, info_label]:
+	for label in [speed_label, gear_label, street_label, status_label, info_label, hints_label]:
 		label.visible = shown
 	speed_label.visible = shown and not on_foot
 	gear_label.visible = shown and not on_foot

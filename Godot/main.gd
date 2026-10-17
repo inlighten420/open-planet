@@ -205,6 +205,9 @@ var arrive_stand := {}	# (an airport gone to: you arrive at its plane stand, the
 var walk_test_time := 0.0
 var walk_test_marks := [1.0, 4.0, 7.0, 9.5, 11.8, 12.9]
 var high_view := false	# --high (pictures): the free camera 1.2 km up, looking out to the horizon
+var race_pic := false	# --racepic (pictures): a second car beside yours, a length ahead, both held on the road; the camera low at the front quarter
+var _rival: RigidBody3D
+var clean_pic := false	# --clean (pictures): no numbers on screen (frame time, memory) and no key hints, for showing the game off
 var look := Vector3(1200.0, -8.0, -60.0)	# --look=up,pitch,yaw (pictures): the free camera this high above the car, this way (degrees)
 var f_step := 0
 var f_start := Vector3.ZERO
@@ -325,6 +328,10 @@ func _ready() -> void:
 			plane_test = true
 		elif arg == "--cruisetest":
 			cruise_test = true
+		elif arg == "--clean":
+			clean_pic = true
+		elif arg == "--racepic":
+			race_pic = true
 		elif arg == "--high":
 			high_view = true
 		elif arg.begins_with("--look="):
@@ -396,7 +403,7 @@ func _ready() -> void:
 			verbose = true
 
 	testing = crash_test or world_map_test or fetch_test.size() == 2 or mp_test != "" or share_test != "" or car_hit_test or hunt_test or zombie_test or roadkill_test or booth_test or workshop_test or editor_test or prop_test or game_maker_test or rules_test or race_test or fence_test or arrive_test or drive_test or engine_test or gpu_profile or build_test or switch_test >= 0.0 or walk_test or plane_test or cruise_test or fly_test or wheel_test or shot_path != "" or speed_test > 0.0 or key_test or reset_test or r_test or menu_test != "" or phone_test != "" or make_test != "" or gen_test or golf_test or event_test != "" or tunnel_test != "" or robot_mode != "" or net_join != "" or net_test > 0.0 \
-		or f_test or test_teleport.size() == 2 or test_map or net_host or side_view or high_view or traffic_override >= 0
+		or f_test or test_teleport.size() == 2 or test_map or net_host or side_view or high_view or race_pic or traffic_override >= 0
 	if testing:
 		# (a test's workshop: its own, begun empty; the one in the Saved folder left alone)
 		Packs.testing = true
@@ -964,7 +971,7 @@ func _apply_settings(window_too: bool = true) -> void:
 		car.tc_level = settings.tc_level
 		car.set_steering_ratio(settings.steering_ratio)	# (the cockpit's steering wheel turns by it, wheel or keys)
 	_apply_sound()
-	hud.show_fps = settings.show_fps
+	hud.show_fps = settings.show_fps and not clean_pic
 	hud.quality_name = GameSettings.PRESETS[settings.preset] if settings.is_preset() else "Custom"
 	hud.show_memory = settings.show_memory
 	hud.set_shown(settings.hud_shown)
@@ -1294,8 +1301,8 @@ func _unhandled_input(event: InputEvent) -> void:
 
 # The keys that do something now, for the HUD's bottom line: so a newcomer finds building, the phone and the map
 func _key_hints() -> String:
-	if not world.is_ready() or loading.is_showing():
-		return ""
+	if not world.is_ready() or loading.is_showing() or ((high_view or race_pic or clean_pic) and shot_path != ""):
+		return ""	# (not in a picture of the view)
 	if camera.map:
 		return "Map data (c) OpenStreetMap contributors    M close"	# (a map: its credit on it, as the licence asks)
 	if camera.free:
@@ -1323,6 +1330,8 @@ func _key(key: Key) -> void:
 				golf.stop()
 			elif hunt:
 				hunt.toggle_game()	# (the game here on or off: tickets offered here, or the one you're playing stopped)
+		KEY_F12:
+			_screenshot()
 		KEY_F3:
 			settings.debug_info = not settings.debug_info
 			settings.save_godot("bDebugInfo", settings.debug_info)
@@ -3930,7 +3939,13 @@ func _process(delta: float) -> void:
 			camera.look_at(house.global_transform * Vector3(3.0, 2.5, -3.0), Vector3.UP)
 			camera._free_pitch = camera.rotation.x
 			camera._free_yaw = camera.rotation.y
+	if clean_pic and hud.shown:
+		hud.set_shown(false)	# (a picture for showing off: nothing over the view)
+	if race_pic and car and shown_frames == 100:
+		_stage_race()
 	if high_view and car and shown_frames == 100:
+		if shot_path != "":
+			hud.set_shown(false)	# (a picture of the view: the HUD not in it; not saved)
 		camera.start_free()
 		camera.position = car.global_position + Vector3(0.0, look.x, 0.0)
 		camera._free_pitch = deg_to_rad(look.y)
@@ -3955,6 +3970,35 @@ func _process(delta: float) -> void:
 			_save(shot_path.get_basename() + "_later.png")
 			if not (plane_test or walk_test or cruise_test or hunt_test or zombie_test or roadkill_test or booth_test or workshop_test or editor_test or prop_test or game_maker_test or rules_test or race_test):
 				get_tree().quit()	# (those tests end themselves)
+
+
+# --racepic: two cars racing, staged: a rival (another body) in the next lane a length ahead, both held where they are
+# (a picture can't tell held from flat out), and the camera low by the road ahead of them, looking back at both
+func _stage_race() -> void:
+	var road: Dictionary = world.nearest_road(car.global_position, 60.0)
+	if not road.get("found", false):
+		return
+	var direction: Vector3 = road["direction"]
+	var along := (direction if direction.dot(-car.global_transform.basis.z) >= 0.0 else -direction).normalized()
+	var side := Vector3(-along.z, 0.0, along.x).normalized()
+	var middle: Vector3 = road["position"]
+	if side.dot(middle - car.global_position) < 0.0:
+		side = -side	# (the rival on the road's side of you, not off its edge)
+	car.freeze = true
+	_rival = ClassDB.instantiate("GeodriveCar")
+	_rival.body = 1 if car.body != 1 else 4
+	var at := car.global_position + side * 3.0 + along * 4.0
+	at.y = world.ground_height(at) + 0.6
+	_rival.transform = Transform3D(Basis.looking_at(along, Vector3.UP), at)
+	add_child(_rival)
+	_rival.freeze = true
+	hud.set_shown(false)
+	camera.start_free()
+	var both := (car.global_position + at) * 0.5
+	camera.global_position = both + along * 9.0 - side * 4.5 + Vector3.UP * 1.4
+	camera.look_at(both + Vector3.UP * 0.5, Vector3.UP)
+	camera._free_pitch = camera.rotation.x
+	camera._free_yaw = camera.rotation.y
 
 
 # --menutest=<folder>: pictures of the front menu, the settings tabs, the cars and areas, the loading screen part way,
@@ -4407,6 +4451,16 @@ func _first_phone_button(node: Node, text: String) -> Node:
 		if label.text == text:
 			return label.get_parent().get_parent().get_parent().get_child(0)
 	return null
+
+
+# F12: a picture of the game as it is now (H first for none of the HUD), into the Pictures folder's Open-Planet
+func _screenshot() -> void:
+	await RenderingServer.frame_post_draw
+	var folder := OS.get_system_dir(OS.SYSTEM_DIR_PICTURES).path_join("Open-Planet")
+	DirAccess.make_dir_recursive_absolute(folder)
+	var path := folder.path_join("Open-Planet %s.png" % Time.get_datetime_string_from_system().replace(":", "-").replace("T", " "))
+	get_viewport().get_texture().get_image().save_png(path)
+	hud.set_status("Picture saved, in Pictures, Open-Planet", 2.0)
 
 
 func _save(path: String) -> void:

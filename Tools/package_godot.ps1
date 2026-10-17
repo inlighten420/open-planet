@@ -101,7 +101,7 @@ TAB: YOUR PHONE (the pad's Back on foot)
   Build     building and making things
   Friends   play together: host, or join a friend
   Settings  picture, controls, sound; the game's own (Advanced: the debug things)
-ESC: pause (Resume, Settings, Quit)
+ESC: pause (Resume, Settings, Quit)    H: hide the HUD    F12: a picture (saved in Pictures, Open-Planet)
 
 ON FOOT
   W A S D: walk   Shift: run   Ctrl: sprint   Space: jump   mouse: look
