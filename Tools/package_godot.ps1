@@ -132,6 +132,7 @@ GAMES: the world makes its own, from what's really there, and you find them as y
 MULTIPLAYER: one hosts (Play with friends, or the phone's Friends), friends join by the host's address
   (Tailscale, or the same network). Everyone needs this same version. What the host's made (guns, props, games,
   races) comes to everyone who joins.
+  Setting it up (the same house, Tailscale, or a port on your router): docs/MULTIPLAYER.md on the GitHub page.
 
 Your settings and buildings are kept in %APPDATA%\Godot\app_userdata\Geodrive.
 Map data (c) OpenStreetMap contributors; terrain SRTM/Copernicus; land cover ESA WorldCover.

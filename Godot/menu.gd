@@ -1009,5 +1009,5 @@ func _multiplayer_page() -> void:
 		net.player_name = new_name.left(24)
 		UnrealSettings.set_value("Geodrive", "PlayerName", net.player_name)
 		show_page("multiplayer"))
-	_note("Both players need Tailscale (tailscale.com) on the same network, or to be on the same home network. The host keeps the area; friends who join are put on the road beside the host. Traffic and the robot driver are offline only. A Godot game and an Unreal game can't join each other.")
+	_note("Both players need Tailscale (tailscale.com) on the same network, or to be on the same home network. The host keeps the area; friends who join are put on the road beside the host. Traffic and the robot driver are offline only. How to set it up: docs/MULTIPLAYER.md (on the project's GitHub page).")
 	_back()
