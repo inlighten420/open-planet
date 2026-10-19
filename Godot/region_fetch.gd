@@ -15,6 +15,8 @@ var _title: Label
 var _status: Label
 var _bar: ProgressBar
 var _yes: Button
+var _report: Button	# (after a failed download: a bug report with what geotile said, to the form on GitHub)
+var _transcript := ""	# (every line geotile said for this download, for that report)
 var _no: Button
 var _pid := -1
 var _out: FileAccess
@@ -80,11 +82,32 @@ func _ready() -> void:
 		_start()
 		_yes.text = "Download it")
 	buttons.add_child(_yes)
+	_report = Button.new()
+	_report.text = "Report this"
+	_report.visible = false
+	_report.pressed.connect(_report_failure)
+	buttons.add_child(_report)
 	_no = Button.new()
 	_no.text = "Not now"
 	_no.pressed.connect(_cancel)
 	buttons.add_child(_no)
 	_panel.visible = false
+
+
+# "Report this" on a failed download: a bug report saying what was being fetched, where it stopped and everything geotile
+# said, sent to the bug form on GitHub (SendToUs) with the zip's folder beside it
+func _report_failure() -> void:
+	var note := "Map download failed: %s (%.5f, %.5f%s), stopped at: %s. %s" % [_wanted["name"], _wanted["lat"], _wanted["lon"],
+		", %.0f km round" % _wanted["km"] if _wanted.get("km", 0.0) > 0.0 else ", the whole region", _step, _failure]
+	var path: String = main.make_bug_report(note, "geotile said:\n" + _transcript)
+	if path == "":
+		_status.text += "\n\nThe report couldn't be saved."
+		return
+	main.note_made("report", path, note)
+	main.last_made["lat"] = _wanted["lat"]
+	main.last_made["lon"] = _wanted["lon"]
+	_status.text = SendToUs.send(main.last_made)
+	_report.visible = false
 
 
 func busy() -> bool:
@@ -235,6 +258,8 @@ func _start() -> void:
 	_err = run["stderr"]
 	_lines = ""
 	_failure = ""
+	_transcript = ""
+	_report.visible = false
 	_step = ""
 	_detail = ""
 	_warning = ""
@@ -335,12 +360,15 @@ Or get the whole region this town is in instead (a bigger download, from a diffe
 				_yes.visible = true
 				_wanted["km"] = 0.0
 			_no.text = "Close"
+			_report.visible = main != null
 			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE	# (a button to click: the mouse was captured for playing on meanwhile)
 			print("Geodrive: getting %s failed: %s" % [_wanted["name"], _status.text.replace("\n", " ")])
 
 
 # One line of what geotile says: a step ("[  41 s] the heights"), how far in it ("1 of 9: ... 36s"), what's made, a failure
 func _take(line: String) -> void:
+	if _transcript.length() < 200000:
+		_transcript += line + "\n"
 	if line.begins_with("READY "):
 		_made = line.substr(6)
 	elif line.begins_with("["):

@@ -6,7 +6,7 @@ extends RefCounted
 
 # The game's version: on the start screen, in bug reports and the log, and in the release zip's name (package_godot.ps1
 # reads it from here). Friends can only play together on the same one
-const VERSION := "0.2"
+const VERSION := "0.2.1"
 
 const QUALITY := "/Script/Geodrive.GeodriveQualitySubsystem"
 const WHEEL := "/Script/GeoFFB.GeoFFBSubsystem"

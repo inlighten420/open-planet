@@ -2,15 +2,16 @@
 
 **Welcome to your virtual planet: a place where we can all connect, play, build and create.**
 
-### [⬇ Download Open-Planet 0.2 for Windows (free, about 130 MB)](https://github.com/inlighten420/open-planet/releases/latest)
+### [⬇ Download Open-Planet 0.2.1 for Windows (free, about 130 MB)](https://github.com/inlighten420/open-planet/releases/latest)
 
 Unzip it anywhere and run `Open-Planet.exe`; nothing to install. (Windows may say it's an unknown app: More info, Run
 anyway.) **Try a demo** to play at once: Honolulu on Oahu (the city, its airport, the mountains and tunnels) or Monte
 Carlo. Or choose **Play somewhere new**, click anywhere on the world map, and the game downloads that place (just a town,
 a few MB, or the whole region) and takes you there.
 
-Already have 0.1? Keep your maps: unzip 0.2 over the old folder, or just start it: it finds the maps your last version
-downloaded. What's new: [docs/RELEASE_NOTES_0.2.md](docs/RELEASE_NOTES_0.2.md).
+Already have an earlier version? Keep your maps: unzip the new one over the old folder, or just start it: it finds the
+maps your last version downloaded. What's new: [docs/RELEASE_NOTES_0.2.1.md](docs/RELEASE_NOTES_0.2.1.md). What we know
+is still rough, and what we're doing about it: the [known issues](https://github.com/inlighten420/open-planet/issues?q=is%3Aissue+label%3A%22known+issue%22).
 
 Open-Planet is the whole real Earth, made from open map data. Pick anywhere on the globe and you arrive there: your
 own street, your own town, the real roads and the ground around them. Walk, drive, fly, hunt, race and play golf on

@@ -191,6 +191,8 @@ func show_page(new_page: String) -> void:
 			_events_page()
 		"demos":
 			_demos_page()
+		"report":
+			_report_page()
 		_:
 			_main_page()
 	# the first button (or the open settings tab) takes the keys and the gamepad
@@ -357,7 +359,7 @@ func _start_page() -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
 	_content.add_child(row)
-	for entry in [["Settings", show_page.bind("settings")],["Quit", func(): game.quit_game() if game else get_tree().quit()]]:
+	for entry in [["Settings", show_page.bind("settings")], ["Report a problem", show_page.bind("report")], ["Quit", func(): game.quit_game() if game else get_tree().quit()]]:
 		var small := Button.new()
 		small.text = "   %s   " % entry[0]
 		small.add_theme_font_size_override("font_size", 17)
@@ -417,6 +419,21 @@ var events_text := ""
 
 # Play an event: every race track, golf course, reserve and park on your maps (the world makes a game at each),
 # nearest where you last were first; Go: there, at its start
+# Something wrong, from the start screen (a map that won't download, the game itself): a bug report, sent to the form on
+# GitHub (SendToUs), the zip's folder beside it to drag it in
+func _report_page() -> void:
+	_subtitle.text = "Something wrong? Tell us: the game fills in the rest"
+	_text_action("What went wrong? (a few words)", "", "Report it", func(note: String):
+		var path: String = game.make_bug_report(note) if game else ""
+		if path != "" and game:
+			game.note_made("report", path, note)
+			_subtitle.text = SendToUs.send(game.last_made)
+		else:
+			_subtitle.text = "The report couldn't be saved")
+	_note("Saves a zip (in Documents, Open-Planet, Bug reports) with the game's log, your settings and controllers, and opens the bug form on our GitHub page with the folder beside it: drag the zip in, and Submit (a free GitHub account). In the game, F4 records what goes wrong and F6 sends it.")
+	_back()
+
+
 # The demo areas that ship with the game: pick one
 func _demos_page() -> void:
 	_subtitle.text = "Try a demo: ready now, nothing to download"
