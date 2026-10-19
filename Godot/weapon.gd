@@ -230,29 +230,30 @@ func _process(delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not usable():
 		return
-	if event is InputEventMouseButton:
-		match event.button_index:
-			MOUSE_BUTTON_RIGHT:
-				aiming = event.pressed
-				get_viewport().set_input_as_handled()
-			MOUSE_BUTTON_LEFT:
-				if load["arrow"]:
-					if event.pressed and loaded > 0 and _now() >= _busy_until:
-						_drawing = 0.0
-					elif not event.pressed and _drawing >= 0.0:
-						if _drawing >= DRAW_TIME:
-							_fire()
-						else:
-							main.hud.set_status("Let down (draw it fully: hold the button)", 1.5)
-						_drawing = -1.0
-				else:
-					_trigger = event.pressed
-					if event.pressed:
+	if event is InputEventMouseButton or event is InputEventKey:
+		if event is InputEventKey and event.echo:
+			return
+		if Controls.hit(event, "aim"):
+			aiming = event.pressed
+			get_viewport().set_input_as_handled()
+		elif Controls.hit(event, "shoot"):
+			if load["arrow"]:
+				if event.pressed and loaded > 0 and _now() >= _busy_until:
+					_drawing = 0.0
+				elif not event.pressed and _drawing >= 0.0:
+					if _drawing >= DRAW_TIME:
 						_fire()
-				get_viewport().set_input_as_handled()
-	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_R:
-		_reload()
-		get_viewport().set_input_as_handled()
+					else:
+						main.hud.set_status("Let down (draw it fully: hold the button)", 1.5)
+					_drawing = -1.0
+			else:
+				_trigger = event.pressed
+				if event.pressed:
+					_fire()
+			get_viewport().set_input_as_handled()
+		elif event.pressed and not event.echo and Controls.hit(event, "reload"):
+			_reload()
+			get_viewport().set_input_as_handled()
 
 
 func _reload() -> void:

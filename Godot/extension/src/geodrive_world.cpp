@@ -10,6 +10,7 @@
 #include "GeoPlaces/Areas.h"
 #include "GeoRoads/Projection.h"
 #include "GeoRoads/RoadSurface.h"
+#include "GeoRoads/RoadSweep.h"
 #include "GeoWorld/Piece.h"
 #include "GeoTraffic/Traffic.h"
 #include "GeoTraffic/RobotDriver.h"
@@ -616,6 +617,7 @@ struct GeodriveWorld::State
 	double BuildingsDrawnTo = 0.0;	// m; 0 = as far as the tiles go
 	bool bFollowLand = true;	// the road style (for the next piece built)
 	bool bKerbs = true;
+	bool bTruth = false;	// (the truth test: roads solved without the LiDAR, see dump_roads)
 	bool bScanRoads = false;	// scan every road of each piece built (debug)
 	Materials Paints;
 
@@ -1006,7 +1008,7 @@ struct GeodriveWorld::State
 			}
 			Rules.bMph = bool(D.get("mph", Rules.bMph));
 			const String Style = D.get("style", "");
-			Rules.Style = Style == "uk" ? georoads::RoadStyle::UK : Style == "south_africa" ? georoads::RoadStyle::SouthAfrica : Style == "europe" ? georoads::RoadStyle::Europe : Rules.Style;
+			Rules.Style = Style == "uk" ? georoads::RoadStyle::UK : Style == "south_africa" ? georoads::RoadStyle::SouthAfrica : Style == "europe" ? georoads::RoadStyle::Europe : Style == "us" ? georoads::RoadStyle::US : Rules.Style;
 			const Dictionary Speeds = D.get("speed_kmh", Dictionary());
 			for (int64_t k = 0; k < Speeds.keys().size(); ++k)
 			{
@@ -1076,6 +1078,7 @@ struct GeodriveWorld::State
 		Request.MinKm = 5.0;
 		Request.bFollowLand = bFollowLand;
 		Request.bKerbs = bKerbs;
+		Request.bTruth = bTruth;
 		Request.bScanRoads = bScanRoads;
 		Request.ParallelFor = georoads::ThreadsParallelFor;
 		State* Self = this;
@@ -1378,6 +1381,7 @@ void GeodriveWorld::_bind_methods()
 	ClassDB::bind_method(D_METHOD("get_status"), &GeodriveWorld::get_status);
 	ClassDB::bind_method(D_METHOD("get_loading_status"), &GeodriveWorld::get_loading_status);
 	ClassDB::bind_method(D_METHOD("road_lines", "position", "radius"), &GeodriveWorld::road_lines);
+	ClassDB::bind_method(D_METHOD("road_points", "position", "radius"), &GeodriveWorld::road_points);
 	ClassDB::bind_method(D_METHOD("get_attribution"), &GeodriveWorld::get_attribution);
 	ClassDB::bind_static_method("GeodriveWorld", D_METHOD("is_uk", "lat", "lon"), &GeodriveWorld::is_uk);
 	ClassDB::bind_method(D_METHOD("get_country"), &GeodriveWorld::get_country);
@@ -1394,6 +1398,7 @@ void GeodriveWorld::_bind_methods()
 	ClassDB::bind_method(D_METHOD("clear_traffic"), &GeodriveWorld::clear_traffic);
 	ClassDB::bind_method(D_METHOD("get_start"), &GeodriveWorld::get_start);
 	ClassDB::bind_method(D_METHOD("nearest_road", "position", "max_distance", "drivable_only"), &GeodriveWorld::nearest_road, DEFVAL(true));
+	ClassDB::bind_method(D_METHOD("dump_roads", "path"), &GeodriveWorld::dump_roads);
 	ClassDB::bind_method(D_METHOD("to_lat_lon", "position"), &GeodriveWorld::to_lat_lon);
 	ClassDB::bind_method(D_METHOD("from_lat_lon", "lat", "lon"), &GeodriveWorld::from_lat_lon);
 	ClassDB::bind_method(D_METHOD("contains_lat_lon", "lat", "lon"), &GeodriveWorld::contains_lat_lon);
@@ -1444,6 +1449,7 @@ void GeodriveWorld::_bind_methods()
 	ClassDB::bind_method(D_METHOD("get_follow_land"), &GeodriveWorld::get_follow_land);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "follow_land"), "set_follow_land", "get_follow_land");
 	ClassDB::bind_method(D_METHOD("set_kerbs", "on"), &GeodriveWorld::set_kerbs);
+	ClassDB::bind_method(D_METHOD("set_truth", "on"), &GeodriveWorld::set_truth);
 	ClassDB::bind_method(D_METHOD("get_kerbs"), &GeodriveWorld::get_kerbs);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "kerbs"), "set_kerbs", "get_kerbs");
 	ClassDB::bind_method(D_METHOD("set_scan_roads", "on"), &GeodriveWorld::set_scan_roads);
@@ -1467,6 +1473,7 @@ double GeodriveWorld::get_building_distance() const { return World->BuildingsDra
 void GeodriveWorld::set_follow_land(bool bOn) { World->bFollowLand = bOn; }
 bool GeodriveWorld::get_follow_land() const { return World->bFollowLand; }
 void GeodriveWorld::set_kerbs(bool bOn) { World->bKerbs = bOn; }
+void GeodriveWorld::set_truth(bool bOn) { World->bTruth = bOn; }
 bool GeodriveWorld::get_kerbs() const { return World->bKerbs; }
 void GeodriveWorld::set_view_distance(double Metres) { World->ViewDistance = std::clamp(Metres, 1000.0, 100000.0); }
 double GeodriveWorld::get_view_distance() const { return World->ViewDistance; }
@@ -2383,7 +2390,7 @@ void GeodriveWorld::_process(double Delta)
 				S.HorizonRadius = 0.0;
 			}
 			const bool bStale = !S.HorizonNode || std::abs(S.HorizonRadius - Radius) > 1.0 || S.HorizonPieces != PieceList
-				|| (Here - S.HorizonCentre).Size() > std::max(500000.0, Radius * 0.2);
+				|| (Here - S.HorizonCentre).Size() > std::max(300000.0, Radius * 0.1);
 			// (not waiting for a piece to finish building any more: flying, they're built back to back, and the horizon
 			// never had its turn, the land ending in a straight edge with the sea beyond)
 			if (bWanted && bStale && !S.bHorizonJob)
@@ -2702,6 +2709,145 @@ String GeodriveWorld::get_status() const
 	}
 	return vformat("pieces %s%s; ground %d detailed, %d coarse km, %d distant blocks; %d road tiles; %d solid tiles; jobs %d+%d",
 		String::utf8(Pieces.c_str()), S.bPieceJob ? String(" (building the next)") : String(), Near, Far, Shown, Loaded, Bodies, S.ChunkJobs, S.TileJobs);
+}
+
+bool GeodriveWorld::dump_roads(const String& Path) const
+{
+	const State& S = *World;
+	if (S.Pieces.empty() || !S.Pieces[0]->Core->Roads)
+	{
+		return false;
+	}
+	// every piece's roads, each road's points as latitude and longitude with the road's height and the elevation data's under it
+	// (metres), and its junctions; one road per line, so a big area stays readable
+	std::string Out = "{\"pieces\": [\n";
+	auto Quoted = [](const std::string& Text)
+	{
+		std::string Q = "\"";
+		for (const char C : Text)
+		{
+			if (C == '"' || C == '\\')
+			{
+				Q += '\\';
+			}
+			if (static_cast<unsigned char>(C) >= 0x20)
+			{
+				Q += C;
+			}
+		}
+		return Q + "\"";
+	};
+	for (size_t p = 0; p < S.Pieces.size(); ++p)
+	{
+		const auto& Core = *S.Pieces[p]->Core;
+		const georoads::RoadGraph& Roads = *Core.Roads;
+		Out += (p ? ",\n" : "") + std::string("{\"piece\": ") + std::to_string(Core.Number) + ", \"roads\": [\n";
+		for (size_t e = 0; e < Roads.Edges.size(); ++e)
+		{
+			const georoads::RoadEdge& Edge = Roads.Edges[e];
+			Out += (e ? ",\n" : "") + georoads::Format("{\"id\": %d, \"name\": %s, \"highway\": %s, \"layer\": %d, \"bridge\": %d, \"tunnel\": %d, \"oneway\": %d, \"half\": %.2f, \"from\": %d, \"to\": %d, \"points\": [",
+				int32_t(e), Quoted(Edge.Name).c_str(), Quoted(Edge.Highway).c_str(), Edge.Layer, Edge.bBridge ? 1 : 0, Edge.bTunnel ? 1 : 0, Edge.bOneway ? 1 : 0,
+				Edge.HalfWidth / 100.0, Edge.StartNode, Edge.EndNode);
+			for (size_t i = 0; i < Edge.Points.size(); ++i)
+			{
+				double Lat = 0.0, Lon = 0.0;
+				S.Projection.ToLatLon(Edge.Points[i] + Core.Origin, Lat, Lon);
+				const double Height = i < Edge.Heights.size() ? Edge.Heights[i] / 100.0 : 0.0;
+				// (the elevation data itself, not the ground as shaped round the roads: that follows the road and hides what it should be)
+				// (and whether that is measured, LiDAR: the truth the roads are scored against)
+				float Measured = 0.0f;
+				const bool bMeasured = Core.Raster && Core.Raster->SampleFine(Lat, Lon, Measured);
+				Out += georoads::Format("%s[%.6f, %.6f, %.2f, %.2f, %d]", i ? ", " : "", Lat, Lon, Height, Core.Ground->BareHeight(Edge.Points[i]) / 100.0, bMeasured ? 1 : 0);
+			}
+			Out += "]}";
+		}
+		Out += "],\n\"junctions\": [\n";
+		for (size_t n = 0; n < Roads.Nodes.size(); ++n)
+		{
+			const auto& Node = Roads.Nodes[n];
+			double Lat = 0.0, Lon = 0.0;
+			S.Projection.ToLatLon(Node.Position + Core.Origin, Lat, Lon);
+			Out += (n ? ",\n" : "") + georoads::Format("{\"id\": %d, \"lat\": %.6f, \"lon\": %.6f, \"height\": %.2f, \"roads\": [", int32_t(n), Lat, Lon, Node.Height / 100.0);
+			for (size_t k = 0; k < Node.Edges.size(); ++k)
+			{
+				Out += (k ? ", " : "") + std::to_string(Node.Edges[k]);
+			}
+			Out += "]}";
+		}
+		// the pretend drive: where a hatchback and a truck would meet the road (Core/GeoRoads/RoadSweep)
+		Out += "],\n\"sweep\": [\n";
+		int32_t Listed = 0;
+		for (const georoads::SweepCar& Car : { georoads::HatchbackCar(), georoads::TruckCar() })
+		{
+			const std::vector<georoads::SweepIssue> Issues = georoads::SweepRoads(Roads, Car, nullptr);
+			int32_t Counts[5] = {};
+			for (const georoads::SweepIssue& Issue : Issues)
+			{
+				++Counts[static_cast<int32_t>(Issue.Kind)];
+				double Lat = 0.0, Lon = 0.0;
+				S.Projection.ToLatLon(Issue.At + Core.Origin, Lat, Lon);
+				Out += georoads::Format("%s{\"kind\": \"%s\", \"car\": %s, \"edge\": %d, \"other\": %d, \"lat\": %.6f, \"lon\": %.6f, \"value\": %.3f, \"text\": %s}", Listed++ ? ",\n" : "",
+					georoads::SweepKindName(Issue.Kind), Quoted(Issue.Car).c_str(), Issue.Edge, Issue.Other, Lat, Lon, Issue.Value, Quoted(georoads::DescribeIssue(Roads, Issue)).c_str());
+			}
+			UtilityFunctions::print(String("Geodrive: [Sweep] ") + String::utf8(Car.Name.c_str()) + vformat(": %d ceilings, %d bellies, %d noses, %d tails, %d climbs",
+				Counts[0], Counts[1], Counts[2], Counts[3], Counts[4]));
+		}
+		// the road mesh round a place (GEODRIVE_DUMPTRIS=lat,lon,metres): its triangles, to see what the roads really cover
+		Out += "],\n\"tris\": [\n";
+		if (const char* Window = std::getenv("GEODRIVE_DUMPTRIS"))
+		{
+			double WLat = 0.0, WLon = 0.0, WRadius = 0.0;
+			if (std::sscanf(Window, "%lf,%lf,%lf", &WLat, &WLon, &WRadius) == 3)
+			{
+				const Vec2 Centre = S.Projection.ToWorld(WLat, WLon) - Core.Origin;
+				int32_t Listed = 0;
+				geomesh::RoadMeshes Meshes;
+				geomesh::MeshOptions MeshOptions;
+geomesh::BuildRoads(Roads, Meshes, MeshOptions);
+				{
+					for (int32_t Which = 0; Which < 4; ++Which)
+					{
+						const geoground::MeshData& Mesh = Which < 3 ? Meshes.Roads[Which] : Meshes.Skirts;
+						for (size_t t = 0; t + 2 < Mesh.Indices.size(); t += 3)
+						{
+							const geoground::Vec3f* V[3] = { &Mesh.Positions[size_t(Mesh.Indices[t])], &Mesh.Positions[size_t(Mesh.Indices[t + 1])], &Mesh.Positions[size_t(Mesh.Indices[t + 2])] };
+							bool bNear = false;
+							for (const geoground::Vec3f* P : V)
+							{
+								bNear |= std::hypot(P->X - Centre.X, P->Y - Centre.Y) < WRadius * 100.0;
+							}
+							if (!bNear)
+							{
+								continue;
+							}
+							Out += georoads::Format("%s[%d, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %d]", Listed++ ? ",\n" : "", Which,
+								(V[0]->X - Centre.X) / 100.0, (V[0]->Y - Centre.Y) / 100.0, V[0]->Z / 100.0, (V[1]->X - Centre.X) / 100.0, (V[1]->Y - Centre.Y) / 100.0, V[1]->Z / 100.0,
+								(V[2]->X - Centre.X) / 100.0, (V[2]->Y - Centre.Y) / 100.0, V[2]->Z / 100.0, t / 3 < Mesh.Tags.size() ? Mesh.Tags[t / 3] : -1);
+						}
+					}
+				}
+			}
+		}
+		// the buildings as they stand (each one's whole outline, its foot and top in metres), for finding any that share ground
+		Out += "],\n\"buildings\": [\n";
+		for (size_t b = 0; b < Core.Outlines.size(); ++b)
+		{
+			const geomesh::BuildingOutline& Building = Core.Outlines[b];
+			Out += georoads::Format("%s{\"id\": %lld, \"base\": %.2f, \"top\": %.2f, \"fp\": [", b ? ",\n" : "", static_cast<long long>(Building.Id), Building.Base / 100.0, Building.Top / 100.0);
+			for (size_t i = 0; i < Building.Footprint.size(); ++i)
+			{
+				double Lat = 0.0, Lon = 0.0;
+				S.Projection.ToLatLon(Building.Footprint[i] + Core.Origin, Lat, Lon);
+				Out += georoads::Format("%s[%.7f, %.7f]", i ? ", " : "", Lat, Lon);
+			}
+			Out += "]}";
+		}
+		Out += "]}";
+	}
+	Out += "\n]}\n";
+	std::ofstream File(std::filesystem::u8path(Path.utf8().get_data()), std::ios::binary);
+	File << Out;
+	return bool(File);
 }
 
 Dictionary GeodriveWorld::nearest_road(const Vector3& Position, double MaxDistance, bool bDrivableOnly) const
@@ -3108,6 +3254,63 @@ PackedVector3Array GeodriveWorld::road_lines(const Vector3& Position, double Rad
 				Out.push_back(S.Render(Edge.Points[i + 1] + Piece->Core->Origin, (bHeights ? Edge.Heights[i + 1] : 0.0) + 30.0));
 			}
 		}
+	}
+	return Out;
+}
+
+Array GeodriveWorld::road_points(const Vector3& Position, double Radius) const
+{
+	const State& S = *World;
+	Array Out;
+	const Vec2 Drive = S.Drive(Position);
+	const PiecePtr Piece = S.PieceAt(Drive);
+	if (!Piece)
+	{
+		return Out;
+	}
+	const Vec2 P = Drive - Piece->Core->Origin;
+	const georoads::RoadGraph& Roads = *Piece->Core->Roads;
+	const int32_t Reach = int32_t(std::ceil(Radius * 100.0 / RoadGrid::Cell));
+	const int32_t CX = int32_t(std::floor(P.X / RoadGrid::Cell)), CY = int32_t(std::floor(P.Y / RoadGrid::Cell));
+	std::vector<int32_t> Edges;
+	for (int32_t X = CX - Reach; X <= CX + Reach; ++X)
+	{
+		for (int32_t Y = CY - Reach; Y <= CY + Reach; ++Y)
+		{
+			const auto Found = Piece->Grid.Cells.find({ X, Y });
+			if (Found != Piece->Grid.Cells.end())
+			{
+				for (const auto& Entry : Found->second)
+				{
+					Edges.push_back(Entry.first);
+				}
+			}
+		}
+	}
+	std::sort(Edges.begin(), Edges.end());
+	Edges.erase(std::unique(Edges.begin(), Edges.end()), Edges.end());
+	for (const int32_t EdgeIndex : Edges)
+	{
+		const georoads::RoadEdge& Edge = Roads.Edges[EdgeIndex];
+		const bool bHeights = Edge.Heights.size() == Edge.Points.size();
+		PackedVector3Array Line;
+		for (size_t i = 0; i < Edge.Points.size(); ++i)
+		{
+			Line.push_back(S.Render(Edge.Points[i] + Piece->Core->Origin, bHeights ? Edge.Heights[i] : 0.0));
+		}
+		Dictionary Road;
+		Road["id"] = EdgeIndex;
+		Road["name"] = String::utf8(Edge.Name.c_str());
+		Road["highway"] = String::utf8(Edge.Highway.c_str());
+		Road["layer"] = Edge.Layer;
+		Road["tunnel"] = Edge.bTunnel;
+		Road["bridge"] = Edge.bBridge;
+		Road["half"] = Edge.HalfWidth / 100.0;
+		Road["from"] = Edge.StartNode;
+		Road["to"] = Edge.EndNode;
+		Road["way"] = static_cast<int64_t>(Edge.WayId);
+		Road["points"] = Line;
+		Out.push_back(Road);
 	}
 	return Out;
 }
@@ -3536,12 +3739,17 @@ String GeodriveWorld::get_attribution() const
 	// what the data's licences ask for, as the Unreal game shows it: OpenStreetMap always, and the height data the
 	// built pieces used (SRTM tiles always; Copernicus and the Environment Agency's LiDAR where they were used)
 	bool bWorldCover = false;
-	bool bCopernicus = false, bLidar = false, bRlp = false;
+	bool bCopernicus = false, bLidar = false, bRlp = false, bIgn = false;
 	for (const PiecePtr& P : World->Pieces)
 	{
 		bCopernicus = bCopernicus || P->Core->bUsedCopernicus;
 		bLidar = bLidar || (P->Core->bUsedLidar && P->Core->FineGrid != int(geotile::FineGrid::Utm32));
-		bRlp = bRlp || (P->Core->bUsedLidar && P->Core->FineGrid == int(geotile::FineGrid::Utm32));
+		// (the UTM 32 grid's 1 m heights: Rheinland-Pfalz's in Germany, IGN's on the Riviera, Monaco's)
+		double Lat = 0.0, Lon = 0.0;
+		World->Projection.ToLatLon(P->Core->Origin, Lat, Lon);
+		const bool bFineUtm = P->Core->bUsedLidar && P->Core->FineGrid == int(geotile::FineGrid::Utm32);
+		bRlp = bRlp || (bFineUtm && Lat >= 45.0);
+		bIgn = bIgn || (bFineUtm && Lat < 45.0);
 		bWorldCover = bWorldCover || P->Core->bUsedWorldCover;
 	}
 	std::string Text = "Map data (c) OpenStreetMap contributors - openstreetmap.org/copyright.  "
@@ -3557,6 +3765,10 @@ String GeodriveWorld::get_attribution() const
 	if (bRlp)
 	{
 		Text += ". Heights (c) GeoBasis-DE / LVermGeoRP, dl-de/by-2-0, www.lvermgeo.rlp.de";
+	}
+	if (bIgn)
+	{
+		Text += ". Heights: IGN RGE ALTI (c) IGN, Licence Ouverte Etalab 2.0";
 	}
 	if (bWorldCover)
 	{

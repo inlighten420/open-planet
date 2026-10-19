@@ -13,6 +13,7 @@
 #include <chrono>
 #include <cstdio>
 #include <filesystem>
+#include <fstream>
 #include <functional>
 #include <array>
 #include <map>
@@ -234,9 +235,10 @@ namespace
 
 	/** Runs Work(i) for i in [0, Count) on all cores */
 	template <typename F>
-	void ParallelFor(size_t Count, F Work)
+	void ParallelFor(size_t Count, F Work, const ProgressSpan* Span = nullptr)
 	{
 		std::atomic<size_t> NextIndex{ 0 };
+		std::atomic<size_t> Finished{ 0 };
 		std::mutex ErrorLock;
 		std::string Error;
 		std::vector<std::thread> Threads;
@@ -255,6 +257,7 @@ namespace
 						std::lock_guard<std::mutex> Guard(ErrorLock);
 						Error = E.what();
 					}
+					ReportChunk(Span, ++Finished, Count);
 				}
 			});
 		}
@@ -333,6 +336,7 @@ namespace
 		const auto Start = std::chrono::steady_clock::now();
 		auto Elapsed = [&] { return std::chrono::duration<double>(std::chrono::steady_clock::now() - Start).count(); };
 
+		ReportProgress(0.0, "", true);	// (starts again from nothing)
 		PbfReadStats Read;
 		const PbfBands Pbf(PbfPath, Read, GameWays, Area.bSet ? &Area.BoxMin : nullptr, Area.bSet ? &Area.BoxMax : nullptr);
 		std::printf("read %s: %llu blocks, %llu of %llu ways kept, %llu nodes kept (of %llu), %llu missing; %.1fs\n", PbfPath.c_str(),
@@ -417,7 +421,13 @@ namespace
 			const uint32_t First = FirstColumns[Band];
 			const uint32_t Last = Band + 1 < FirstColumns.size() ? FirstColumns[Band + 1] - 1 : UINT32_MAX;
 			auto InBand = [&](uint32_t X) { return X >= First && X <= Last; };
-			const OsmSet Set = Pbf.ReadBand([&](const LatLon& P) { const TileXY T = TileOf(P, TileZoom); return InBand(T.X) && Area.Contains(T); });
+			// (timed on a country: reading the file is the first 6% of the job, the bands 6% to 95% (cutting each band's ways
+			// out about a fifth of a band, then a stretch with nothing to count, then its tiles packed), saving the rest)
+			const double BandSize = 0.89 / double(FirstColumns.size());
+			const double BandFrom = 0.06 + BandSize * double(Band);
+			const ProgressSpan ReadSpan{ BandFrom, BandFrom + BandSize * 0.2, "cutting the map into tiles" };
+			const ProgressSpan PackSpan{ BandFrom + BandSize * 0.4, BandFrom + BandSize, "packing the tiles" };
+			const OsmSet Set = Pbf.ReadBand([&](const LatLon& P) { const TileXY T = TileOf(P, TileZoom); return InBand(T.X) && Area.Contains(T); }, &ReadSpan);
 
 			PackStats Stats;
 			const std::map<TileXY, std::vector<WayPiece>> Split = SplitIntoTiles(Set, Stats);
@@ -446,7 +456,7 @@ namespace
 				const std::vector<uint8_t> Bytes = EncodeTile(Mine[i]->second, Set, Quantum, KeepId);
 				Raw[i] = Bytes.size();
 				Packed[i] = Zstd(Bytes.data(), Bytes.size(), Level);
-			});
+			}, &PackSpan);
 			for (size_t i = 0; i < Mine.size(); ++i)
 			{
 				RawBytes += Raw[i];
@@ -458,6 +468,7 @@ namespace
 			std::fflush(stdout);
 		}
 
+		ReportProgress(0.96, "saving the map");
 		const std::string Meta = nlohmann::json{
 			{ "format", "geodrive-osm" }, { "format_version", 0 }, { "tile_compression", "zstd" },
 			{ "attribution", "(c) OpenStreetMap contributors, ODbL" },
@@ -467,6 +478,7 @@ namespace
 		Must(WritePmTiles(Tiles, H, Meta, Archive, Error), Error);
 		Tiles.clear();
 		WriteFile(OutPath, Archive);
+		ReportProgress(1.0, "the map is packed");
 
 		std::printf("ways %llu, pieces %zu, nodes %llu, used twice %zu, missing node refs (counted per band) %zu\n", (unsigned long long)Read.WaysKept,
 			Total.Pieces, (unsigned long long)Read.NodesKept, Pbf.Shared.size(), Total.MissingNodeRefs);
@@ -1605,7 +1617,114 @@ namespace
 		return Best;
 	}
 
-	int Region(std::string Wanted, const std::string& DataDir, double MemoryGB, bool bHeights, double AtLat, double AtLon, bool bKeepDownload)
+	/** A name for a small area's files: its words, then where it is (hundredths of a degree, m for minus): cape_town_m3392_1842 */
+	std::string AreaStem(const std::string& Name, double Lat, double Lon)
+	{
+		std::string Words;
+		for (const char C : Lower(Name))
+		{
+			if (std::isalnum(static_cast<unsigned char>(C)))
+			{
+				Words += C;
+			}
+			else if (!Words.empty() && Words.back() != '_')
+			{
+				Words += '_';
+			}
+		}
+		while (!Words.empty() && Words.back() == '_')
+		{
+			Words.pop_back();
+		}
+		auto Hundredths = [](double Degrees) { const long V = std::lround(Degrees * 100.0); return std::string(V < 0 ? "m" : "") + std::to_string(std::labs(V)); };
+		return "local_" + (Words.empty() ? std::string("area") : Words.substr(0, 40)) + "_" + Hundredths(Lat) + "_" + Hundredths(Lon);
+	}
+
+	/**
+	 *  A small area (a town: Km round a spot) straight from OpenStreetMap's Overpass service, as a .osm.pbf of what the game builds
+	 *  from (roads, buildings, water, woods, leisure and protected areas, airports, place names): a few MB for a town, where
+	 *  a whole country's extract is hundreds. Tries the main server, then another.
+	 */
+	bool FetchAreaPbf(double Lat, double Lon, double Km, const std::filesystem::path& Pbf)
+	{
+		namespace fs = std::filesystem;
+		const double DLat = Km / 111.32;
+		const double DLon = Km / (111.32 * std::max(0.1, std::cos(Lat * 3.14159265358979 / 180.0)));
+		char Box[160];
+		std::snprintf(Box, sizeof(Box), "(%.6f,%.6f,%.6f,%.6f)", Lat - DLat, Lon - DLon, Lat + DLat, Lon + DLon);
+		const std::string B = Box;
+		const std::string Query =
+			"[out:json][timeout:300][maxsize:2147483648];(" +
+			std::string("way[\"highway\"~\"^(motorway|trunk|primary|secondary|tertiary|unclassified|residential|living_street|service|road|motorway_link|trunk_link|primary_link|secondary_link|tertiary_link|track|raceway)$\"]") + B + ";" +
+			"way[\"building\"]" + B + ";way[\"natural\"~\"^(water|wood|beach|sand)$\"]" + B + ";way[\"landuse\"]" + B + ";" +
+			"way[\"leisure\"]" + B + ";way[\"boundary\"~\"protected_area|national_park\"]" + B + ";way[\"aeroway\"]" + B + ";" +
+			"node[\"place\"]" + B + ";node[\"aeroway\"=\"aerodrome\"]" + B + ";);(._;>;);out body;";
+		const fs::path QueryFile = fs::u8path(Pbf.u8string() + ".query");
+		const fs::path JsonFile = fs::u8path(Pbf.u8string() + ".json");
+		WriteFile(QueryFile.u8string(), std::vector<uint8_t>(Query.begin(), Query.end()));
+		// (public servers: each is sometimes too busy; one that answers in a minute or two wins)
+		const char* Servers[] = { "https://overpass.private.coffee/api/interpreter", "https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter" };
+		bool bGot = false;
+		// (they answer one try in two or three with an error, some busy, some not: round and round them, a few times)
+		for (int Round = 0; Round < 4 && !bGot; ++Round)
+		{
+			for (const char* Server : Servers)
+			{
+				const std::string Command = std::string("curl.exe -s -f -L --max-time 400 -A \"Open-Planet/0.2 (https://github.com/inlighten420/open-planet)\" -o \"") + JsonFile.u8string() +
+					"\" --data-urlencode \"data@" + QueryFile.u8string() + "\" \"" + Server + "\"";
+				// (curl runs, and meanwhile how much has come is said every two seconds: the server sends nothing until it has made
+				// the whole answer, then it flows, and there is no total to show a percent of)
+				std::atomic<bool> bFinished{ false };
+				std::thread Watcher([&]()
+				{
+					uint64_t Last = UINT64_MAX;
+					for (int Tick = 0; !bFinished; ++Tick)
+					{
+						std::error_code SizeError;
+						const uint64_t Bytes = fs::exists(JsonFile) ? uint64_t(fs::file_size(JsonFile, SizeError)) : 0;
+						if (!SizeError && (Bytes != Last || Tick % 5 == 0))
+						{
+							Last = Bytes;
+							std::printf("downloaded %.1f MB\n", Bytes / 1048576.0);
+							std::fflush(stdout);
+						}
+						for (int Wait = 0; Wait < 20 && !bFinished; ++Wait)
+						{
+							std::this_thread::sleep_for(std::chrono::milliseconds(100));
+						}
+					}
+				});
+				const int CurlResult = std::system(Command.c_str());
+				bFinished = true;
+				Watcher.join();
+				if (CurlResult == 0 && fs::exists(JsonFile) && fs::file_size(JsonFile) > 1000)
+				{
+					bGot = true;
+					break;
+				}
+				std::printf("try %d: %s didn't answer\n", Round + 1, Server);
+				std::fflush(stdout);
+			}
+			if (!bGot)
+			{
+				std::this_thread::sleep_for(std::chrono::seconds(3));
+			}
+		}
+		std::error_code Ignore;
+		fs::remove(QueryFile, Ignore);
+		if (!bGot)
+		{
+			fs::remove(JsonFile, Ignore);
+			return false;
+		}
+		std::printf("the area's map is here: %s; making it a map file\n", Mb(fs::file_size(JsonFile)).c_str());
+		std::fflush(stdout);
+		WriteFile(Pbf.u8string(), WriteOsmPbf(LoadOverpassJson(JsonFile.u8string(), true)));
+		fs::remove(JsonFile, Ignore);
+		return true;
+	}
+
+	int Region(std::string Wanted, const std::string& DataDir, double MemoryGB, bool bHeights, double AtLat, double AtLon, bool bKeepDownload, double LocalKm = 0.0, const std::string& LocalName = "")
 	{
 		namespace fs = std::filesystem;
 		const auto Start = std::chrono::steady_clock::now();
@@ -1674,7 +1793,9 @@ namespace
 			return 1;
 		}
 		const nlohmann::json& P = (*Found)["properties"];
-		const std::string Id = P["id"], Name = P.value("name", Id);
+		// (a small area: named for where it is, with its country's rules from the extract that covers it)
+		const std::string Id = LocalKm > 0.0 ? "local/" + AreaStem(LocalName, AtLat, AtLon).substr(6) : std::string(P["id"]);
+		const std::string Name = LocalKm > 0.0 ? LocalName : P.value("name", Id);
 		std::string Country, Subdivision;
 		if (P.contains("iso3166-2") && !P["iso3166-2"].empty())
 		{
@@ -1727,8 +1848,16 @@ namespace
 		const bool bPacked = fs::exists(Archive) && fs::exists(WorldMap) && fs::exists(Fields);
 		if (!bPacked && !fs::exists(Done))
 		{
-			Say("downloading " + std::string(P["urls"]["pbf"]));
-			Must(Fetch(P["urls"]["pbf"], Pbf, true), "the download failed: run the same again to carry on");
+			if (LocalKm > 0.0)
+			{
+				Say("downloading just the area round it (" + std::to_string(int(std::lround(LocalKm))) + " km, from OpenStreetMap)");
+				Must(FetchAreaPbf(AtLat, AtLon, LocalKm, Pbf), "the download failed (is the internet on? OpenStreetMap's servers are sometimes busy): try again in a while");
+			}
+			else
+			{
+				Say("downloading " + std::string(P["urls"]["pbf"]));
+				Must(Fetch(P["urls"]["pbf"], Pbf, true), "the download failed: run the same again to carry on");
+			}
 			WriteFile(Done.u8string(), { 'o', 'k' });
 		}
 		if (fs::exists(Pbf))
@@ -1748,6 +1877,23 @@ namespace
 		{
 			Say("the world map's places and main roads");
 			Must(World({ Pbf.u8string() }, WorldMap.u8string()) == 0, "the world map failed");
+			if (LocalKm > 0.0)
+			{
+				// (the area's place names aren't in what Overpass gave: its own name, where it was asked for, so the world map and the
+				// go-to lists have it)
+				try
+				{
+					const std::vector<uint8_t> Bytes = ReadFile(WorldMap.u8string());
+					nlohmann::json WorldJson = nlohmann::json::parse(Bytes.begin(), Bytes.end());
+					if (WorldJson["places"].empty())
+					{
+						WorldJson["places"].push_back({ Name, "town", std::round(AtLat * 1e5) / 1e5, std::round(AtLon * 1e5) / 1e5, 0 });
+						const std::string Text = WorldJson.dump();
+						WriteFile(WorldMap.u8string(), std::vector<uint8_t>(Text.begin(), Text.end()));
+					}
+				}
+				catch (const std::exception& E) { std::printf("warning: couldn't add the area's name to its map (%s)\n", E.what()); }
+			}
 		}
 		if (!fs::exists(Fields))
 		{
@@ -1766,7 +1912,7 @@ namespace
 		About["name"] = Name;
 		About["country"] = Country;
 		About["subdivision"] = Subdivision;
-		About["source"] = std::string(P["urls"]["pbf"]);
+		About["source"] = LocalKm > 0.0 ? std::string("OpenStreetMap (Overpass), ") + std::to_string(int(std::lround(LocalKm))) + " km round " + Name : std::string(P["urls"]["pbf"]);
 		About["packed"] = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 		const std::string AboutText = About.dump(1, '\t');
 		WriteFile((Regions / (Stem + ".region.json")).u8string(), std::vector<uint8_t>(AboutText.begin(), AboutText.end()));
@@ -1776,15 +1922,31 @@ namespace
 		if (bHeights && !fs::exists(Base))
 		{
 			Say("the heights (Copernicus 30 m: a while for a big country)");
-			Must(PackCopernicusRegion(Base.u8string(), Archive.u8string(), 8) == 0, "the heights failed: run the same again to carry on");
-			fs::remove_all(fs::u8path(Base.u8string() + ".download"), Ignore);	// (the 1-degree tiles it was made from)
+			// (the map is made and works without them: a failure here is said, not fatal, and the same again carries on)
+			int HeightsResult = 1;
+			try { HeightsResult = PackCopernicusRegion(Base.u8string(), Archive.u8string(), 8); }
+			catch (const std::exception& E) { std::printf("warning: the heights failed (%s)\n", E.what()); }
+			if (HeightsResult == 0)
+			{
+				fs::remove_all(fs::u8path(Base.u8string() + ".download"), Ignore);	// (the 1-degree tiles it was made from)
+			}
+			else
+			{
+				std::printf("warning: no heights for now (the map works without them): run the same again to carry on\n");
+			}
 		}
 		// (and the rougher heights the game blends them with and reaches far with (SRTM, AWS Terrain Tiles), fetched now
 		// rather than as you first drive there)
 		if (bHeights)
 		{
 			Say("the far terrain (SRTM tiles)");
-			Must(PrefetchTerrain(Archive.u8string(), (Data / "terrain").u8string(), 16) == 0, "the terrain failed: run the same again to carry on");
+			int TerrainResult = 1;
+			try { TerrainResult = PrefetchTerrain(Archive.u8string(), (Data / "terrain").u8string(), 16); }
+			catch (const std::exception& E) { std::printf("warning: the far terrain failed (%s)\n", E.what()); }
+			if (TerrainResult != 0)
+			{
+				std::printf("warning: not all the far terrain for now (it's fetched as you drive there)\n");
+			}
 		}
 		// (the extract, packed, isn't needed again: a few times the map's size; --keep-download keeps it, to pack again)
 		if (!bKeepDownload && fs::exists(Pbf))
@@ -1860,6 +2022,147 @@ namespace
 		const size_t Average = A.Header.DataLength / std::max<size_t>(1, A.Entries.size());
 		std::printf("| **Ours (PMTiles, zstd per tile)** | **%s** | %zu tiles, average %.1f KB, largest %.1f KB; decode all %.3fs (+ join %.3fs), largest tile %.2f ms |\n",
 			Mb(A.File.size()).c_str(), A.Entries.size(), Average / 1e3, Largest / 1e3, DecodeAllS, AssembleS, DecodeLargestS * 1e3);
+		return 0;
+	}
+}
+
+namespace
+{
+	/** The tile a PMTiles tile id stands for (the spec's Hilbert curve, backwards) */
+	void TileIdToZxy(uint64_t Id, int& Z, uint32_t& X, uint32_t& Y)
+	{
+		uint64_t Acc = 0;
+		Z = 0;
+		while (Z < 31 && Acc + (uint64_t(1) << (2 * Z)) <= Id)
+		{
+			Acc += uint64_t(1) << (2 * Z);
+			++Z;
+		}
+		const uint64_t N = uint64_t(1) << Z;
+		uint64_t T = Id - Acc, Tx = 0, Ty = 0;
+		for (uint64_t S = 1; S < N; S *= 2)
+		{
+			const uint64_t Rx = 1 & (T / 2), Ry = 1 & (T ^ Rx);
+			if (Ry == 0)
+			{
+				if (Rx == 1)
+				{
+					Tx = S - 1 - Tx;
+					Ty = S - 1 - Ty;
+				}
+				std::swap(Tx, Ty);
+			}
+			Tx += S * Rx;
+			Ty += S * Ry;
+			T /= 4;
+		}
+		X = uint32_t(Tx);
+		Y = uint32_t(Ty);
+	}
+
+	/**
+	 *  An area cut out of an archive this PC already has (a country's map, or its Copernicus heights), into an archive of
+	 *  its own: only the tiles over the area are copied, nothing is downloaded or packed again. Only the archive's
+	 *  directories are read whole (a country's heights run to gigabytes); then the tiles over the area, one by one.
+	 *  Map archives are web tiles at z14; height archives (bHeights) are 120 arc-second squares (Copernicus.cpp)
+	 */
+	int CropArchive(const std::string& InPath, const std::string& OutPath, double Lat, double Lon, double Km, bool bHeights)
+	{
+		using namespace geotile;
+		std::ifstream In(std::filesystem::u8path(InPath), std::ios::binary);
+		Must(bool(In), "can't open " + InPath);
+		In.seekg(0, std::ios::end);
+		const uint64_t FileSize = uint64_t(In.tellg());
+		std::vector<uint8_t> Head(127);
+		In.seekg(0);
+		In.read(reinterpret_cast<char*>(Head.data()), Head.size());
+		Must(bool(In) && std::string(reinterpret_cast<const char*>(Head.data()), 7) == "PMTiles", InPath + " isn't a PMTiles archive");
+		uint64_t DataOffset = 0;
+		for (int i = 7; i >= 0; --i)
+		{
+			DataOffset = (DataOffset << 8) | Head[56 + i];
+		}
+		Must(DataOffset >= 127 && DataOffset < FileSize, "broken archive: " + InPath);
+		// (everything before the tile data: the header, its directories and metadata)
+		std::vector<uint8_t> Front(static_cast<size_t>(DataOffset));
+		In.seekg(0);
+		In.read(reinterpret_cast<char*>(Front.data()), Front.size());
+		PmHeader Header;
+		std::vector<PmEntry> Entries;
+		std::string Error;
+		Must(ReadPmTiles(Front.data(), size_t(FileSize), Header, Entries, Error), InPath + ": " + Error);
+		Must(Header.RootOffset + Header.RootLength <= DataOffset && Header.MetadataOffset + Header.MetadataLength <= DataOffset
+			&& (Header.LeafLength == 0 || Header.LeafOffset + Header.LeafLength <= DataOffset), "directories after the tiles aren't supported: " + InPath);
+		const std::string Metadata(reinterpret_cast<const char*>(Front.data() + Header.MetadataOffset), size_t(Header.MetadataLength));
+
+		const double HalfLat = Km * 0.5 / 111.32, HalfLon = HalfLat / std::max(0.05, std::cos(Lat * 3.14159265358979 / 180.0));
+		const double South = Lat - HalfLat, North = Lat + HalfLat, West = Lon - HalfLon, East = Lon + HalfLon;
+		uint32_t X0 = 0, X1 = 0, Y0 = 0, Y1 = 0;
+		int Zoom = 14;
+		if (bHeights)
+		{
+			X0 = uint32_t(std::floor((West + 180.0) * 30.0)); X1 = uint32_t(std::floor((East + 180.0) * 30.0));
+			Y0 = uint32_t(std::floor((South + 90.0) * 30.0)); Y1 = uint32_t(std::floor((North + 90.0) * 30.0));
+		}
+		else
+		{
+			LatLon SouthWest, NorthEast;
+			SouthWest.Lat = int32_t(std::lround(South * 1e7)); SouthWest.Lon = int32_t(std::lround(West * 1e7));	// (LatLon: 1e-7 degrees)
+			NorthEast.Lat = int32_t(std::lround(North * 1e7)); NorthEast.Lon = int32_t(std::lround(East * 1e7));
+			const TileXY A = TileOf(SouthWest, TileZoom), B = TileOf(NorthEast, TileZoom);
+			X0 = std::min(A.X, B.X); X1 = std::max(A.X, B.X);
+			Y0 = std::min(A.Y, B.Y); Y1 = std::max(A.Y, B.Y);
+			Zoom = TileZoom;
+		}
+
+		std::map<uint64_t, std::vector<uint8_t>> Tiles;
+		uint64_t Bytes = 0;
+		for (const PmEntry& E : Entries)
+		{
+			for (uint32_t Run = 0; Run < std::max<uint32_t>(1, E.RunLength); ++Run)
+			{
+				int Z = 0;
+				uint32_t X = 0, Y = 0;
+				TileIdToZxy(E.TileId + Run, Z, X, Y);
+				if (Z != Zoom || X < X0 || X > X1 || Y < Y0 || Y > Y1)
+				{
+					continue;
+				}
+				std::vector<uint8_t> Tile(E.Length);
+				In.seekg(std::streamoff(DataOffset + E.Offset));
+				In.read(reinterpret_cast<char*>(Tile.data()), Tile.size());
+				Must(bool(In), "can't read a tile of " + InPath);
+				Bytes += Tile.size();
+				Tiles[E.TileId + Run] = std::move(Tile);
+			}
+		}
+		if (Tiles.empty())
+		{
+			int MinZ = 99, MaxZ = -1;
+			uint32_t MinX = UINT32_MAX, MaxX = 0, MinY = UINT32_MAX, MaxY = 0;
+			for (const PmEntry& E : Entries)
+			{
+				int Z = 0;
+				uint32_t X = 0, Y = 0;
+				TileIdToZxy(E.TileId, Z, X, Y);
+				MinZ = std::min(MinZ, Z); MaxZ = std::max(MaxZ, Z);
+				if (Z == Zoom) { MinX = std::min(MinX, X); MaxX = std::max(MaxX, X); MinY = std::min(MinY, Y); MaxY = std::max(MaxY, Y); }
+			}
+			char Why[400];
+			std::snprintf(Why, sizeof(Why), "nothing of %s lies in that area (wanted z%d x %u-%u y %u-%u; it has z%d-%d, at z%d x %u-%u y %u-%u)", InPath.c_str(),
+				Zoom, X0, X1, Y0, Y1, MinZ, MaxZ, Zoom, MinX, MaxX, MinY, MaxY);
+			Must(false, Why);
+		}
+		Header.MinLatE7 = int32_t(South * 1e7); Header.MaxLatE7 = int32_t(North * 1e7);
+		Header.MinLonE7 = int32_t(West * 1e7); Header.MaxLonE7 = int32_t(East * 1e7);
+		Header.CenterLatE7 = int32_t(Lat * 1e7); Header.CenterLonE7 = int32_t(Lon * 1e7);
+		std::vector<uint8_t> Out;
+		Must(WritePmTiles(Tiles, Header, Metadata, Out, Error), Error);
+		std::ofstream File(std::filesystem::u8path(OutPath), std::ios::binary);
+		File.write(reinterpret_cast<const char*>(Out.data()), Out.size());
+		Must(bool(File), "can't write " + OutPath);
+		std::printf("%s: %zu of %zu tiles (%.1f MB) cut out of %s, %.0f km round %.5f, %.5f\n", OutPath.c_str(), Tiles.size(), Entries.size(),
+			Out.size() / 1048576.0, InPath.c_str(), Km, Lat, Lon);
 		return 0;
 	}
 }
@@ -1965,6 +2268,14 @@ int main(int Argc, char** Argv)
 			Must(std::sscanf(Argv[4], "--box=%lf,%lf,%lf,%lf", &S, &W, &N, &E) == 4 && N > S && E > W, "--box=south,west,north,east");
 			return ExportGodot(Argv[2], Argv[3], S, W, N, E, Argv[5], Argc >= 7 && std::string(Argv[6]) == "--uk");
 		}
+		if (Cmd == "crop" && Argc >= 5)
+		{
+			// an area cut out of an archive this PC has: geotile crop <in.pmtiles> <out.pmtiles> --around=lat,lon,km [--heights]
+			double Lat = 0.0, Lon = 0.0, Km = 0.0;
+			Must(std::sscanf(Argv[4], "--around=%lf,%lf,%lf", &Lat, &Lon, &Km) == 3 && Km > 0.0, "--around=lat,lon,km");
+			const bool bHeights = (Argc >= 6 && std::string(Argv[5]) == "--heights") || std::filesystem::u8path(Argv[2]).filename().u8string().rfind("cop_", 0) == 0;
+			return CropArchive(Argv[2], Argv[3], Lat, Lon, Km, bHeights);
+		}
 		if (Cmd == "terrain" && Argc >= 4)
 		{
 			// the SRTM heights for a whole region ahead of time: geotile terrain <region.pmtiles> <Cache/terrain> [--jobs=16]
@@ -2004,7 +2315,8 @@ int main(int Argc, char** Argv)
 			// geotile region <geofabrik id> [data folder] [--memory=GB] [--no-heights]: a country ready to play
 			// (or --at=lat,lon for the name: the smallest extract that covers that spot)
 			std::string DataDir, Name = Argv[2];
-			double MemoryGB = 0.0, AtLat = 0.0, AtLon = 0.0;
+			double MemoryGB = 0.0, AtLat = 0.0, AtLon = 0.0, LocalKm = 0.0;
+			std::string LocalName;
 			bool bHeights = true, bKeep = false;
 			if (Name.rfind("--at=", 0) == 0)
 			{
@@ -2017,6 +2329,8 @@ int main(int Argc, char** Argv)
 				if (A.rfind("--memory=", 0) == 0) { MemoryGB = std::stod(A.substr(9)); }
 				else if (A == "--no-heights") { bHeights = false; }
 				else if (A == "--keep-download") { bKeep = true; }
+				else if (A.rfind("--km=", 0) == 0) { LocalKm = std::stod(A.substr(5)); }
+				else if (A.rfind("--name=", 0) == 0) { LocalName = A.substr(7); }
 				else { DataDir = A; }
 			}
 			if (DataDir.empty())
@@ -2028,7 +2342,8 @@ int main(int Argc, char** Argv)
 				const char* Local = std::getenv("LOCALAPPDATA");
 				DataDir = std::filesystem::exists(Beside / "regions") ? Beside.u8string() : std::string(Local ? Local : ".") + "\\Geodrive\\Cache";
 			}
-			return Region(Name, DataDir, MemoryGB, bHeights, AtLat, AtLon, bKeep);
+			Must(LocalKm <= 0.0 || (Name.empty() && !LocalName.empty()), "--km=N needs --at=lat,lon and --name=<the place's name>");
+			return Region(Name, DataDir, MemoryGB, bHeights, AtLat, AtLon, bKeep, LocalKm, LocalName);
 		}
 		if (Cmd == "world" && Argc == 4)
 		{
@@ -2088,6 +2403,7 @@ int main(int Argc, char** Argv)
 			"  geotile lidar <out.pmtiles> --around=lat,lon,km [--cell=4] [--jobs=8]   (England's LiDAR heights)\n"
 			"  geotile dgm <out.pmtiles> <folder of 1 km GeoTIFFs, UTM 32> [--cell=2]   (Germany's 1 m heights: a track pack's)\n"
 			"  geotile terrain <region.pmtiles> <Cache/terrain> [--jobs=16]   (a region's SRTM heights ahead of time)\n"
+			"  geotile crop <in.pmtiles> <out.pmtiles> --around=lat,lon,km [--heights]   (an area cut out of a map or heights this PC has)\n"
 			"  geotile sections <region.pmtiles> <heights-1m.pmtiles> --around=lat,lon,km <out.csv>   (real road cross-sections)\n"
 			"  geotile packmany <out.pmtiles> <in.osm.pbf>...   (several extracts as one region)\n"
 			"  geotile worldmany <out.world.json> <in.osm.pbf>...\n"

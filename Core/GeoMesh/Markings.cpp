@@ -779,26 +779,28 @@ namespace geomesh
 						const bool bMultiLane = Edge.Lanes >= 4;
 						const double Dash = bMultiLane ? (bRural ? 600.0 : 450.0) : (bRural ? 400.0 : 300.0);
 						const double Gap = bMultiLane ? Dash : (bRural ? 800.0 : 600.0);
-						Paint.Line(LocalWhite, S0, S1, 0.0, MainLineWidth, Dash, Gap, &Approaches);
+						auto& Centre = Options.bYellowCentre ? LocalYellow : LocalWhite;	// (North America: the centre lines yellow)
+						Paint.Line(Centre, S0, S1, 0.0, MainLineWidth, Dash, Gap, &Approaches);
 						// (each direction's no-overtaking line on its own side: mirrored where traffic keeps right)
 						const double Side = Options.bDriveLeft ? 1.0 : -1.0;
 						for (const Range& Zone : ZonesForward)
 						{
-							Paint.Line(LocalWhite, std::max(S0, Zone.X), std::min(S1, Zone.Y), PairOffset * Side, LineWidth);
+							Paint.Line(Centre, std::max(S0, Zone.X), std::min(S1, Zone.Y), PairOffset * Side, LineWidth);
 						}
 						for (const Range& Zone : ZonesBackward)
 						{
-							Paint.Line(LocalWhite, std::max(S0, Zone.X), std::min(S1, Zone.Y), -PairOffset * Side, LineWidth);
+							Paint.Line(Centre, std::max(S0, Zone.X), std::min(S1, Zone.Y), -PairOffset * Side, LineWidth);
 						}
 					}
 					const Range LeftSpan = ShoulderSpan(true), RightSpan = ShoulderSpan(false);
+					auto& EdgeLines = Options.bYellowCentre ? LocalWhite : LocalYellow;	// (North America: the edges white)
 					if (LeftSpan.X < LeftSpan.Y)
 					{
-						Paint.Line(LocalYellow, LeftSpan.X, LeftSpan.Y, LeftEdge - LineWidth, LineWidth);
+						Paint.Line(EdgeLines, LeftSpan.X, LeftSpan.Y, LeftEdge - LineWidth, LineWidth);
 					}
 					if (RightSpan.X < RightSpan.Y)
 					{
-						Paint.Line(LocalYellow, RightSpan.X, RightSpan.Y, RightEdge + LineWidth, LineWidth);
+						Paint.Line(EdgeLines, RightSpan.X, RightSpan.Y, RightEdge + LineWidth, LineWidth);
 					}
 					const int32_t PerSide = Edge.Lanes / 2;
 					if (PerSide >= 2)
@@ -821,13 +823,15 @@ namespace geomesh
 					const double Inward = bOutsideLeft ? 1.0 : -1.0;	// from the outside towards the median, along the chain's left
 					const bool bDivided = georoads::StartsWith(Edge.Highway, "motorway") || georoads::StartsWith(Edge.Highway, "trunk") || georoads::StartsWith(Edge.Highway, "primary");
 					const Range DriverLeftSpan = Edge.Highway == "motorway" ? Range{ S0, S1 } : ShoulderSpan(bOutsideLeft);
+					// (North America: the outside edge, the driver's right, white; the left edge, by the median, yellow on every
+					// one-way road)
 					if (DriverLeftSpan.X < DriverLeftSpan.Y)
 					{
-						Paint.Line(LocalYellow, DriverLeftSpan.X, DriverLeftSpan.Y, DriverLeft - Inward * LineWidth, LineWidth);
+						Paint.Line(Options.bYellowCentre ? LocalWhite : LocalYellow, DriverLeftSpan.X, DriverLeftSpan.Y, DriverLeft - Inward * LineWidth, LineWidth);
 					}
-					if (bDivided && !georoads::EndsWith(Edge.Highway, "_link"))
+					if ((bDivided && !georoads::EndsWith(Edge.Highway, "_link")) || Options.bYellowCentre)
 					{
-						Paint.Line(LocalWhite, S0, S1, DriverRight + Inward * LineWidth, LineWidth);
+						Paint.Line(Options.bYellowCentre ? LocalYellow : LocalWhite, S0, S1, DriverRight + Inward * LineWidth, LineWidth);
 					}
 					if (Edge.Lanes >= 2)
 					{

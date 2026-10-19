@@ -2,8 +2,11 @@
 
 #include "Terrain.h"
 #include "Vegetation.h"
+#include "GeoRoads/RoadStacks.h"
+#include "GeoRoads/RoadReroute.h"
 
 #include <algorithm>
+#include <cstdlib>
 #include <array>
 #include <chrono>
 #include <iterator>
@@ -59,6 +62,9 @@ namespace geoground
 
 		/** Ground may come no closer than this under a road surface anywhere (cm); a ground triangle that does is left out */
 		constexpr float GroundUnderRoad = 1.0f;
+
+		/** How far above its profile the road mesh lies (RoadMesh.cpp: RoadOffset) */
+		constexpr float RoadMeshLift = 3.0f;
 
 		/** A corridor piece with another road under it is cut into this many pieces each way, each point kept under the road */
 		constexpr int32_t QuadCuts = 8;
@@ -491,7 +497,7 @@ namespace geoground
 		return true;
 	}
 
-	void Terrain::ComputeRoadProfiles(RoadGraph& Graph, const RoadBake* Bake) const
+	void Terrain::ComputeRoadProfiles(RoadGraph& Graph, const RoadBake* Bake, bool bRerouted) const
 	{
 		const int32_t NumEdges = static_cast<int32_t>(Graph.Edges.size());
 
@@ -636,12 +642,31 @@ namespace geoground
 		std::vector<std::vector<float>> Solved;
 		georoads::HeightOptions HeightOptions = Options.Heights;
 		HeightOptions.bFollowLand = Options.bFollowLand;
+		std::vector<georoads::StuckRoad> Stuck;
+		HeightOptions.Stuck = bRerouted ? nullptr : &Stuck;
+		const auto SolveStart = std::chrono::steady_clock::now();
 		georoads::SolveHeights(Graph, Points, Measured, Solved, HeightOptions);
+		const double SolveSeconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - SolveStart).count();
 		LogFollow(Graph, Points, Solved);
 		for (int32_t EdgeIndex = 0; EdgeIndex < NumEdges; ++EdgeIndex)
 		{
 			Graph.Edges[EdgeIndex].Points = std::move(Points[EdgeIndex]);
 			Graph.Edges[EdgeIndex].Heights = std::move(Solved[EdgeIndex]);
+		}
+
+		// --- 5. roads mapped lying on another level's with too little room moved beside it, and ramps the solve could not fit
+		// (too steep, or too close to a road over or under them) given a longer line beside their road, where there is room;
+		// then all of it solved again on the new lines ---
+		// (only where the first solve was quick: a city's would take as long again, so its roads keep the map's lines until
+		// the map is packed with them solved)
+		constexpr double RerouteBudget = 4.5;	// s
+		if (!bRerouted && SolveSeconds > RerouteBudget)
+		{
+			Log(georoads::Format("[Reroute] skipped: the solve took %.1f s (over %.0f s), so roads keep the map's lines here", SolveSeconds, RerouteBudget));
+		}
+		else if (!bRerouted && georoads::SeparateStacked(Graph, Options.Heights.Log) + georoads::RerouteRamps(Graph, Stuck, Options.Heights.Log) > 0)
+		{
+			ComputeRoadProfiles(Graph, nullptr, true);
 		}
 	}
 
@@ -821,6 +846,54 @@ namespace geoground
 		EdgeFirst.back() = static_cast<int32_t>(Segments.size());
 		Log(georoads::Format("[Heights] %d of %d roads in town: kerbs and pavements (the country ones keep a verge)", TownRoads, NumEdges));
 
+		// a road over another by the map's levels, with neither a bridge nor a tunnel tag (a ramp over a street): for the
+		// ground it's a deck for 25 m either side of the crossing, so the ground follows the road underneath and stays clear
+		// under the one over it. (Over a tunnel nothing changes: the tube's cover lifts the ground over it)
+		{
+			int32_t Decked = 0;
+			const std::vector<georoads::LevelPair> Pairs = georoads::FindLevelPairs(*Graph, [&Graph](int32_t Edge) -> const std::vector<Vec2>& { return Graph->Edges[Edge].Points; });
+			for (const georoads::LevelPair& Pair : Pairs)
+			{
+				const RoadEdge& Upper = Graph->Edges[Pair.UpperEdge];
+				const RoadEdge& Lower = Graph->Edges[Pair.LowerEdge];
+				const int32_t First = EdgeFirst[Pair.UpperEdge], End = EdgeFirst[Pair.UpperEdge + 1];
+				if (Upper.bBridge || Upper.bTunnel || Lower.bTunnel || First == End)
+				{
+					continue;
+				}
+				const int32_t Middle = First + Pair.UpperSegment;
+				for (const int32_t Step : { -1, 1 })
+				{
+					double Along = 0.0;
+					for (int32_t Index = Middle; Index >= First && Index < End && Along < 2500.0; Index += Step)
+					{
+						RoadSegment& Segment = Segments[Index];
+						Decked += Segment.bBridge ? 0 : 1;
+						Segment.bBridge = true;
+						Segment.Reach = BridgeReach;
+						Along += georoads::Distance(Segment.A, Segment.B);
+					}
+				}
+			}
+			EdgeDecked.assign(Graph->Edges.size(), 0);
+			for (size_t e = 0; e < Graph->Edges.size(); ++e)
+			{
+				EdgeDecked[e] = Graph->Edges[e].bBridge || Graph->Edges[e].bTunnel ? 1 : 0;	// (a bridge's deck and a tunnel's road: not ground-level road)
+			}
+			for (const georoads::LevelPair& Pair : Pairs)
+			{
+				const RoadEdge& Upper = Graph->Edges[Pair.UpperEdge];
+				if (!(Upper.bBridge || Upper.bTunnel || Graph->Edges[Pair.LowerEdge].bTunnel))
+				{
+					EdgeDecked[Pair.UpperEdge] = 1;
+				}
+			}
+			if (Decked > 0)
+			{
+				Log(georoads::Format("[Heights] %d road pieces over another road treated as decks for the ground (%d level pairs)", Decked, static_cast<int32_t>(Pairs.size())));
+			}
+		}
+
 		// 2. how far each segment's earthworks reach: until a 1:2 embankment from the road would meet the natural ground,
 		// judged from the ground beside the road out to 45 m; and how steep its cuttings are: steeper on steep hillsides.
 		// The slow part (36 height samples a segment), so in parallel.
@@ -872,13 +945,14 @@ namespace geoground
 			{
 				continue;
 			}
-			const double Reach = Edge.bBridge ? Edge.HalfWidth + BridgeReach : CorridorExtent(EdgeIndex, FarSpacing);	// the widest a corridor gets
+			const double Extent = CorridorExtent(EdgeIndex, FarSpacing);	// the widest a corridor gets
 			for (int32_t Index = First; Index < End; ++Index)
 			{
+				const double Reach = Segments[Index].bBridge ? Edge.HalfWidth + BridgeReach : Extent;
 				Box2 Box;
 				Box += Segments[Index].A;
 				Box += Segments[Index].B;
-				if (!Edge.bBridge)
+				if (!Segments[Index].bBridge)
 				{
 					const double Width = Segments[Index].HalfWidth;
 					for (int32_t X = FloorToInt((Box.Min.X - Width) / RoadCell); X <= FloorToInt((Box.Max.X + Width) / RoadCell); ++X)
@@ -1131,8 +1205,16 @@ namespace geoground
 		}
 		else if (Height < 300.0f && Land != Forest)
 		{
+			// built-up land by the water (a harbour, a seafront, reclaimed land) is paved, not beach: the grey stone ground; elsewhere
 			// sand along the shoreline
-			Result = Lerp(SandColor, Result, Height / 300.0f);
+			if (Vegetation && Vegetation->ClassAt(Position) == LandBuilt && Land != Beach)
+			{
+				Result = RockColor;
+			}
+			else
+			{
+				Result = Lerp(SandColor, Result, Height / 300.0f);
+			}
 		}
 		// bare rock on steep slopes (over ~35 degrees)
 		const float Steep = std::clamp((0.86f - Normal.Z) / 0.1f, 0.0f, 1.0f);
@@ -1150,12 +1232,13 @@ namespace geoground
 	bool Terrain::RoadOver(const Vec2& Position, Ignore Skip, float& OutTop) const
 	{
 		const auto Found = RoadGrid.find(Key(FloorToInt(Position.X / RoadCell), FloorToInt(Position.Y / RoadCell)));
-		if (Found == RoadGrid.end() || !Surface)
+		if (!Surface)
 		{
 			return false;
 		}
 		bool bFound = false;
-		for (const int32_t Index : Found->second)
+		static const std::vector<int32_t> None;
+		for (const int32_t Index : Found != RoadGrid.end() ? Found->second : None)
 		{
 			const RoadSegment& Segment = Segments[Index];
 			if (Segment.bBridge || Skip.Contains(Segment.Edge) || SegmentDistance(Position, Segment.A, Segment.B) > Segment.HalfWidth)
@@ -1166,7 +1249,70 @@ namespace geoground
 			OutTop = bFound ? std::min(OutTop, Top) : Top;
 			bFound = true;
 		}
+		// and what the road is as built beyond its segments' width: a junction, the paving between roads, a corner's mitre
+		const auto Cell = TriangleGrid.find(Key(FloorToInt(Position.X / TriangleCell), FloorToInt(Position.Y / TriangleCell)));
+		if (Cell != TriangleGrid.end())
+		{
+			for (const int32_t Index : Cell->second)
+			{
+				const RoadTriangle& T = RoadTriangles[Index];
+				if (T.Owner >= 0 && (Skip.Contains(T.Owner) || (T.Owner < static_cast<int32_t>(EdgeDecked.size()) && EdgeDecked[T.Owner])))
+				{
+					continue;
+				}
+				const double D = (T.Y[1] - T.Y[2]) * (T.X[0] - T.X[2]) + (T.X[2] - T.X[1]) * (T.Y[0] - T.Y[2]);
+				if (std::abs(D) < 1.0e-6)
+				{
+					continue;
+				}
+				const double A = ((T.Y[1] - T.Y[2]) * (Position.X - T.X[2]) + (T.X[2] - T.X[1]) * (Position.Y - T.Y[2])) / D;
+				const double B = ((T.Y[2] - T.Y[0]) * (Position.X - T.X[2]) + (T.X[0] - T.X[2]) * (Position.Y - T.Y[2])) / D;
+				const double C = 1.0 - A - B;
+				if (A < -1.0e-4 || B < -1.0e-4 || C < -1.0e-4)
+				{
+					continue;
+				}
+				const float Top = static_cast<float>(A * T.Z[0] + B * T.Z[1] + C * T.Z[2]) - RoadMeshLift;
+				OutTop = bFound ? std::min(OutTop, Top) : Top;
+				bFound = true;
+			}
+		}
 		return bFound;
+	}
+
+	void Terrain::SetRoadSurface(const std::vector<const MeshData*>& Meshes)
+	{
+		RoadTriangles.clear();
+		TriangleGrid.clear();
+		for (const MeshData* Mesh : Meshes)
+		{
+			for (size_t t = 0; t + 2 < Mesh->Indices.size(); t += 3)
+			{
+				RoadTriangle Triangle;
+				float MinX = std::numeric_limits<float>::max(), MinY = MinX, MaxX = -MinX, MaxY = -MinX;
+				for (int32_t Corner = 0; Corner < 3; ++Corner)
+				{
+					const Vec3f& P = Mesh->Positions[size_t(Mesh->Indices[t + size_t(Corner)])];
+					Triangle.X[Corner] = P.X;
+					Triangle.Y[Corner] = P.Y;
+					Triangle.Z[Corner] = P.Z;
+					MinX = std::min(MinX, P.X);
+					MaxX = std::max(MaxX, P.X);
+					MinY = std::min(MinY, P.Y);
+					MaxY = std::max(MaxY, P.Y);
+				}
+				Triangle.Owner = t / 3 < Mesh->Tags.size() ? Mesh->Tags[t / 3] : -1;
+				const int32_t Index = static_cast<int32_t>(RoadTriangles.size());
+				RoadTriangles.push_back(Triangle);
+				for (int32_t X = FloorToInt(MinX / TriangleCell); X <= FloorToInt(MaxX / TriangleCell); ++X)
+				{
+					for (int32_t Y = FloorToInt(MinY / TriangleCell); Y <= FloorToInt(MaxY / TriangleCell); ++Y)
+					{
+						TriangleGrid[Key(X, Y)].push_back(Index);
+					}
+				}
+			}
+		}
 	}
 
 	void Terrain::AddGroundTriangle(MeshData& Out, const Vec3f& A, const Vec3f& B, const Vec3f& C, const Vec3f& NA, const Vec3f& NB, const Vec3f& NC,
@@ -1194,12 +1340,20 @@ namespace geoground
 				}
 			}
 		}
+		// ground in a tunnel's way sinks under its road (not cut away: a hole to see and fall through). Corner by corner, so the
+		// triangles sharing a corner sink it alike and the ground stays whole (a whole triangle sunk tore spikes out of the hill)
+		auto Sunk = [this](const Vec3f& V)
+		{
+			float Road = 0.0f;
+			return InPortalCut(V, &Road) ? Vec3f(V.X, V.Y, std::min(V.Z, Road - 150.0f)) : V;
+		};
+		const Vec3f SA = Sunk(A), SB = Sunk(B), SC = Sunk(C);
 		for (int32_t w = 0; w < NumWeights; ++w)
 		{
 			const Vec3f& W = Weights[w];
-			const Vec3f P = A * W.X + B * W.Y + C * W.Z;
+			const Vec3f P = SA * W.X + SB * W.Y + SC * W.Z;
 			float Top = 0.0f;
-			// (and ground above the road in a tunnel's portal cut: the mouth must be open)
+			// (and what is still in a tunnel's way, a big triangle reaching over it with its corners outside: left out)
 			if ((RoadOver(Vec2(P.X, P.Y), {}, Top) && P.Z > Top - GroundUnderRoad) || InPortalCut(P))
 			{
 				++Check.ByKind[Check.Kind];
@@ -1212,7 +1366,7 @@ namespace geoground
 				return;
 			}
 		}
-		Out.AddTriangle(A, B, C, NA, NB, NC, CA, CB, CC);
+		Out.AddTriangle(SA, SB, SC, NA, NB, NC, CA, CB, CC);
 	}
 
 	void Terrain::BuildCorridors(const Box2& Area, bool bNear, MeshData& Out, GroundCheck& Check) const
@@ -1674,6 +1828,7 @@ namespace geoground
 		const float Sink = static_cast<float>(Spacing) * CorridorSinkPerSpacing;
 		const double TimeStart = Seconds();
 		std::vector<float> Heights(size_t(Size) * Size);
+		std::vector<float> Lowered(size_t(Size) * Size);	// how far each point was dropped (to colour it by its real height)
 		std::vector<uint8_t> Sunk(size_t(Size) * Size);
 		for (int32_t Y = 0; Y < Size; ++Y)
 		{
@@ -1681,7 +1836,12 @@ namespace geoground
 			{
 				const Vec2 P = Origin + Vec2(X * Spacing, Y * Spacing);
 				Sunk[size_t(Y) * Size + X] = bCorridors && SinksUnderCorridor(P, Spacing);
-				Heights[size_t(Y) * Size + X] = GroundHeight(P) - Drop - (Sunk[size_t(Y) * Size + X] ? Sink : 0.0f);
+				// (the coarse levels are dropped to hide cracks, but land is never dropped under the water: in a river delta most of
+				// it is a few metres high, and 3 m down all of it was sea)
+				const float Raw = GroundHeight(P);
+				const float Down = std::min(Drop, std::max(Raw - 30.0f, 0.0f));
+				Lowered[size_t(Y) * Size + X] = Down;
+				Heights[size_t(Y) * Size + X] = Raw - Down - (Sunk[size_t(Y) * Size + X] ? Sink : 0.0f);
 			}
 		}
 		const double TimeHeights = Seconds();
@@ -1739,13 +1899,57 @@ namespace geoground
 		};
 		auto Color = [&](int32_t X, int32_t Y, const Vec3f& N)
 		{
-			return GroundColor(Origin + Vec2(X * Spacing, Y * Spacing), H(X, Y) + Drop, N);
+			return GroundColor(Origin + Vec2(X * Spacing, Y * Spacing), H(X, Y) + Lowered[size_t(Y) * Size + X], N);
 		};
 
+		// the shore is where the ground crosses sea level, so with a grid of 50 or 250 m it was a chain of straight 50 or 250 m
+		// lines (giant pixels). The cells it runs through are cut finer, the ground sampled at each new corner
+		const int32_t Split = Spacing >= 20000.0 ? 8 : (Spacing >= 4000.0 ? 4 : 1);
 		for (int32_t Y = 1; Y <= Cells; ++Y)
 		{
 			for (int32_t X = 1; X <= Cells; ++X)
 			{
+				const float LowH = std::min(std::min(H(X, Y), H(X + 1, Y)), std::min(H(X, Y + 1), H(X + 1, Y + 1)));
+				const float HighH = std::max(std::max(H(X, Y), H(X + 1, Y)), std::max(H(X, Y + 1), H(X + 1, Y + 1)));
+				if (Split > 1 && LowH < 0.0f && HighH > 0.0f && !IsSunk(X, Y) && !IsSunk(X + 1, Y) && !IsSunk(X, Y + 1) && !IsSunk(X + 1, Y + 1))
+				{
+					const double Step = Spacing / Split;
+					std::vector<float> Fine(size_t(Split + 1) * size_t(Split + 1)), Raws(size_t(Split + 1) * size_t(Split + 1));
+					auto F = [&](int32_t I, int32_t J) -> float& { return Fine[size_t(I) * size_t(Split + 1) + size_t(J)]; };
+					auto FinePoint = [&](int32_t I, int32_t J) { return Origin + Vec2(X * Spacing + I * Step, Y * Spacing + J * Step); };
+					for (int32_t I = 0; I <= Split; ++I)
+					{
+						for (int32_t J = 0; J <= Split; ++J)
+						{
+							const float Raw = GroundHeight(FinePoint(I, J));
+							Raws[size_t(I) * size_t(Split + 1) + size_t(J)] = Raw;
+							F(I, J) = Raw - std::min(Drop, std::max(Raw - 30.0f, 0.0f));
+						}
+					}
+					auto FineVertex = [&](int32_t I, int32_t J, Vec3f& Position, Vec3f& Normal, Vec4f& Colour)
+					{
+						const Vec2 P = FinePoint(I, J);
+						Position = Vec3f(static_cast<float>(P.X), static_cast<float>(P.Y), F(I, J));
+						const int32_t I0 = std::max(I - 1, 0), I1 = std::min(I + 1, Split), J0 = std::max(J - 1, 0), J1 = std::min(J + 1, Split);
+						Normal = Vec3f(-(F(I1, J) - F(I0, J)) / float(I1 - I0), -(F(I, J1) - F(I, J0)) / float(J1 - J0), static_cast<float>(2.0 * Step) * 0.5f).Normal();
+						Colour = GroundColor(P, Raws[size_t(I) * size_t(Split + 1) + size_t(J)], Normal);
+					};
+					for (int32_t I = 0; I < Split; ++I)
+					{
+						for (int32_t J = 0; J < Split; ++J)
+						{
+							Vec3f P[4], N[4];
+							Vec4f C[4];
+							FineVertex(I, J, P[0], N[0], C[0]);
+							FineVertex(I + 1, J, P[1], N[1], C[1]);
+							FineVertex(I + 1, J + 1, P[2], N[2], C[2]);
+							FineVertex(I, J + 1, P[3], N[3], C[3]);
+							Out.AddTriangle(P[0], P[1], P[2], N[0], N[1], N[2], C[0], C[1], C[2]);
+							Out.AddTriangle(P[0], P[2], P[3], N[0], N[2], N[3], C[0], C[2], C[3]);
+						}
+					}
+					continue;
+				}
 				const Vec3f P00 = Vertex(X, Y), P10 = Vertex(X + 1, Y), P01 = Vertex(X, Y + 1), P11 = Vertex(X + 1, Y + 1);
 				const Vec3f N00 = Normal(X, Y), N10 = Normal(X + 1, Y), N01 = Normal(X, Y + 1), N11 = Normal(X + 1, Y + 1);
 				const Vec4f C00 = Color(X, Y, N00), C10 = Color(X + 1, Y, N10), C01 = Color(X, Y + 1, N01), C11 = Color(X + 1, Y + 1, N11);
@@ -1872,26 +2076,31 @@ namespace geoground
 		return Count >= 3;
 	}
 
-	bool Terrain::InPortalCut(const Vec3f& Point) const
+	bool Terrain::InPortalCut(const Vec3f& Point, float* OutRoad) const
 	{
 		const Vec2 P(Point.X, Point.Y);
+		bool bIn = false;
+		auto Found = [&](float Road)
+		{
+			OutRoad ? (*OutRoad = bIn ? std::min(*OutRoad, Road) : Road) : 0.0f;
+			bIn = true;
+		};
+		// the mouths: the ground in the tube's way (the ground over its roof stays, its cover)
 		for (const Portal& Cut : Portals)
 		{
 			const Vec2 D = P - Cut.Mouth;
 			const double Along = georoads::Dot(D, Cut.Inward);
 			const double AcrossDistance = std::abs(D.X * Cut.Inward.Y - D.Y * Cut.Inward.X);
-			// (only what's in the tube's way: the ground over its roof stays, its cover; a short tunnel was all cut, its tube
-			// standing in the open)
 			if (Along >= 0.0 && Along <= Cut.Length && AcrossDistance <= Cut.HalfWidth && Surface)
 			{
 				const float Road = Surface->Height(P, Cut.Edge);
 				if (Point.Z > Road - 50.0f && Point.Z < Road + TunnelCut)
 				{
-					return true;
+					Found(Road);
 				}
 			}
 		}
-		// inside the tube anywhere along it (up to a little over its 6.5 m ceiling: not its cover above)
+		// and anywhere along the tube, up to a little over its ceiling
 		for (const Tube& Bore : Tubes)
 		{
 			if (!Bore.Bounds.IsInside(P) || !Surface)
@@ -1906,12 +2115,12 @@ namespace geoground
 					const float Road = Surface->Height(P, Bore.Edge);
 					if (Point.Z > Road - 50.0f && Point.Z < Road + TunnelCut)
 					{
-						return true;
+						Found(Road);
 					}
 					break;
 				}
 			}
 		}
-		return false;
+		return bIn;
 	}
 }

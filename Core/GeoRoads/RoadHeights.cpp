@@ -2,8 +2,10 @@
 
 #include "RoadHeights.h"
 #include "RoadDesign.h"
+#include "RoadStacks.h"
 
 #include <algorithm>
+#include <cstdlib>
 #include <chrono>
 #include <cmath>
 #include <limits>
@@ -29,6 +31,9 @@ namespace georoads
 			if (Highway == "residential" || Highway == "unclassified" || Highway == "living_street" || Highway == "road") { return 3000.0; }
 			return 2500.0;
 		}
+
+		/** A tunnel's smoothness against a road's, in the main solve (it is re-laid evenly between its portals after) */
+		constexpr double TunnelBend = 0.01;
 
 		/** Bigger roads pull a junction's height towards their own */
 		double ClassWeight(const std::string& Highway)
@@ -57,19 +62,14 @@ namespace georoads
 		/** The two halves of a dual carriageway are tied onto one plane across a median up to this wide (cm) */
 		constexpr double MedianTie = 600.0;
 
+		/** Roads on other levels that leave one node are one surface this far out from it, where their lanes overlap (cm) */
+		constexpr double ForkReach = 4500.0;
+
 		/** "Land" style: the land's own slope is measured over this far either side (cm), a road is allowed that slope
 		 *  times LandTrendMargin (plus 1%) before a bump counts, and it may leave the measured ground by LandEarthworks (cm) */
 		constexpr double LandTrendHalfLength = 10000.0;
 		constexpr double LandTrendMargin = 1.15;
 		constexpr double LandEarthworks = 150.0;
-
-		/** A bridge's road surface stands at least this far above a road it crosses (cm): SA's ~5.2 m clearance under the
-		 *  deck plus the deck itself */
-		constexpr double BridgeClearance = 650.0;
-		constexpr double TunnelClearance = 750.0;	// cm from a tunnel's road to the road over it: its 6.5 m tube and its roof
-
-		/** The lift that makes a bridge clear a road eases out at most this fraction of the bridge's grade limit */
-		constexpr double BridgeRampFraction = 0.8;
 
 		double Seconds()
 		{
@@ -262,6 +262,125 @@ namespace georoads
 			default: return 0.30;
 			}
 		}
+
+		/** Roads whose surfaces overlap (a slip road merging, a wide junction, a car park, the two halves of a dual carriageway
+		 *  across a median up to MedianTie): they must be at one height where they overlap, or the car meets a ledge where one
+		 *  surface rises above the other */
+		std::vector<OverlapTie> FindOverlapTies(const RoadGraph& Graph, const std::vector<std::vector<Vec2>>& Points, const Numbering& Unknowns)
+		{
+			std::vector<OverlapTie> Ties;
+			const int32_t NumEdges = static_cast<int32_t>(Graph.Edges.size());
+			auto Unknown = [&Unknowns](int32_t EdgeIndex, int32_t Point) { return Unknowns.At(EdgeIndex, Point); };
+			auto Count = [&Points](int32_t EdgeIndex) { return static_cast<int32_t>(Points[EdgeIndex].size()); };
+			constexpr double Cell = 2000.0;
+			std::unordered_map<uint64_t, std::vector<std::pair<int32_t, int32_t>>> Grid;	// cell -> (edge, segment start)
+			for (int32_t EdgeIndex = 0; EdgeIndex < NumEdges; ++EdgeIndex)
+			{
+				const std::vector<Vec2>& P = Points[EdgeIndex];
+				for (int32_t i = 0; i + 1 < Count(EdgeIndex); ++i)
+				{
+					const Vec2 Mid = (P[i] + P[i + 1]) * 0.5;
+					Grid[CellKey(FloorToInt(Mid.X / Cell), FloorToInt(Mid.Y / Cell))].emplace_back(EdgeIndex, i);
+				}
+			}
+
+			struct Near { int32_t Edge; double Distance; int32_t Segment; double T; };
+			std::vector<Near> Nearest;
+			for (int32_t EdgeIndex = 0; EdgeIndex < NumEdges; ++EdgeIndex)
+			{
+				const RoadEdge& Edge = Graph.Edges[EdgeIndex];
+				const std::vector<Vec2>& P = Points[EdgeIndex];
+				const int32_t N = Count(EdgeIndex);
+				for (int32_t i = 0; i < N; ++i)
+				{
+					const int32_t HomeX = FloorToInt(P[i].X / Cell), HomeY = FloorToInt(P[i].Y / Cell);
+					const double Spacing = 0.5 * ((i > 0 ? Distance(P[i - 1], P[i]) : 0.0) + (i + 1 < N ? Distance(P[i], P[i + 1]) : 0.0));
+
+					// the nearest overlapping piece of each other road (in the order they're first met)
+					Nearest.clear();
+					for (int32_t X = HomeX - 1; X <= HomeX + 1; ++X)
+					{
+						for (int32_t Y = HomeY - 1; Y <= HomeY + 1; ++Y)
+						{
+							const auto Found = Grid.find(CellKey(X, Y));
+							if (Found == Grid.end())
+							{
+								continue;
+							}
+							for (const std::pair<int32_t, int32_t>& Entry : Found->second)
+							{
+								const RoadEdge& Other = Graph.Edges[Entry.first];
+								if (Entry.first == EdgeIndex)
+								{
+									continue;
+								}
+								// (the same level, or two roads leaving one node, tunnels of different layers say: where their lanes overlap
+								// near it they are one surface, and part further out)
+								if (Other.Layer != Edge.Layer || (Other.bBridge || Other.bTunnel) != (Edge.bBridge || Edge.bTunnel))
+								{
+									// (both on structures: a road in the open meets a tunnel at its mouth, and the ground is the one that is measured)
+									const auto bOpen = [](const RoadEdge& E) { return !E.bTunnel && !E.bBridge && E.Layer == 0; };
+									bool bFork = false;
+									for (const int32_t Node : { Edge.StartNode, Edge.EndNode })
+									{
+										bFork |= !bOpen(Edge) && !bOpen(Other) && Node >= 0 && (Node == Other.StartNode || Node == Other.EndNode) && Distance(Graph.Nodes[Node].Position, P[i]) < ForkReach;
+									}
+									if (!bFork)
+									{
+										continue;
+									}
+								}
+								const std::vector<Vec2>& Q = Points[Entry.first];
+								const Vec2 AB = Q[Entry.second + 1] - Q[Entry.second];
+								const double T = AB.SizeSquared() > 1.0 ? std::clamp(Dot(P[i] - Q[Entry.second], AB) / AB.SizeSquared(), 0.0, 1.0) : 0.0;
+								const double Gap = Distance(Q[Entry.second] + AB * T, P[i]);
+
+								// the two halves of a dual carriageway (one-way roads side by side going opposite ways)
+								// are built on one plane, across a median of up to MedianTie; where they really split onto
+								// two levels they're further apart than that
+								const Vec2 Own = (P[std::min(i + 1, N - 1)] - P[std::max(i - 1, 0)]).Normal();
+								const bool bCarriageways = Edge.bOneway && Other.bOneway && Dot(Own, AB.Normal()) < -0.85;
+								const double Reach = bCarriageways ? Edge.HalfWidth + Other.HalfWidth + MedianTie : 0.8 * (Edge.HalfWidth + Other.HalfWidth);
+								if (Gap > Reach)
+								{
+									continue;
+								}
+								auto Best = std::find_if(Nearest.begin(), Nearest.end(), [&](const Near& Item) { return Item.Edge == Entry.first; });
+								if (Best == Nearest.end())
+								{
+									Nearest.push_back({ Entry.first, Gap, Entry.second, T });
+								}
+								else if (Gap < Best->Distance)
+								{
+									*Best = { Entry.first, Gap, Entry.second, T };
+								}
+							}
+						}
+					}
+
+					const int32_t U = Unknown(EdgeIndex, i);
+					for (const Near& Item : Nearest)
+					{
+						const int32_t A = Unknown(Item.Edge, Item.Segment);
+						const int32_t B = Unknown(Item.Edge, Item.Segment + 1);
+						if (A == U || B == U)
+						{
+							continue;	// the same junction node: already one height
+						}
+						OverlapTie Tie;
+						Tie.Point = U;
+						Tie.A = A;
+						Tie.B = B;
+						Tie.PointEdge = EdgeIndex;
+						Tie.OtherEdge = Item.Edge;
+						Tie.T = Item.T;
+						Tie.Weight = 20.0 * std::max(Spacing, 100.0);	// strong: overlapping surfaces really are one surface
+						Ties.push_back(Tie);
+					}
+				}
+			}
+			return Ties;
+		}
 	}
 
 	void SolveHeights(RoadGraph& Graph, const std::vector<std::vector<Vec2>>& Points, const std::vector<std::vector<float>>& Data,
@@ -274,32 +393,25 @@ namespace georoads
 		// --- unknowns: one per node, plus each edge's inner points ---
 		const int32_t NumNodes = static_cast<int32_t>(Graph.Nodes.size());
 		const int32_t NumEdges = static_cast<int32_t>(Graph.Edges.size());
-		std::vector<int32_t> EdgeBase(NumEdges);
-		int32_t NumUnknowns = NumNodes;
-		for (int32_t EdgeIndex = 0; EdgeIndex < NumEdges; ++EdgeIndex)
-		{
-			EdgeBase[EdgeIndex] = NumUnknowns;
-			NumUnknowns += std::max(0, static_cast<int32_t>(Points[EdgeIndex].size()) - 2);
-		}
-		auto Unknown = [&](int32_t EdgeIndex, int32_t Point)
-		{
-			const RoadEdge& Edge = Graph.Edges[EdgeIndex];
-			return Point == 0 ? Edge.StartNode : Point == static_cast<int32_t>(Points[EdgeIndex].size()) - 1 ? Edge.EndNode : EdgeBase[EdgeIndex] + Point - 1;
-		};
+		const Numbering Unknowns(Graph, Points);
+		const int32_t NumUnknowns = Unknowns.Count;
+		auto Unknown = [&Unknowns](int32_t EdgeIndex, int32_t Point) { return Unknowns.At(EdgeIndex, Point); };
 		auto Count = [&Points](int32_t EdgeIndex) { return static_cast<int32_t>(Points[EdgeIndex].size()); };
-
 		// --- the design rules of every road, and the grade each of its segments may have ---
 		std::vector<RoadDesign> Design(NumEdges);
 		std::vector<std::vector<double>> GradeLimit(NumEdges);	// per segment
 		{
-			// the biggest road at each node: a smaller road arriving there is a side road and levels out before it
+			// the biggest road at each node: a smaller road arriving there is a side road and levels out before it; and so does
+			// every road arriving at a roundabout, whatever its class (a car joins the ring off a level landing, not a slope)
 			std::vector<int32_t> NodeRank(NumNodes, 0);
+			std::vector<uint8_t> OnRing(NumNodes, 0);
 			for (int32_t EdgeIndex = 0; EdgeIndex < NumEdges; ++EdgeIndex)
 			{
 				Design[EdgeIndex] = DesignFor(Graph.Edges[EdgeIndex], Options.bUK);
 				for (const int32_t Node : { Graph.Edges[EdgeIndex].StartNode, Graph.Edges[EdgeIndex].EndNode })
 				{
 					NodeRank[Node] = std::max(NodeRank[Node], Design[EdgeIndex].Rank);
+					OnRing[Node] |= Graph.Edges[EdgeIndex].bRoundabout ? 1 : 0;
 				}
 			}
 
@@ -321,8 +433,8 @@ namespace georoads
 
 				// the land is mountainous where the ground itself climbs faster than a flat-country road may, measured over
 				// ~100 m so that noise in the height data doesn't count
-				const bool bSideAtStart = Graph.Nodes[Edge.StartNode].Edges.size() >= 3 && NodeRank[Edge.StartNode] > Rules.Rank;
-				const bool bSideAtEnd = Graph.Nodes[Edge.EndNode].Edges.size() >= 3 && NodeRank[Edge.EndNode] > Rules.Rank;
+				const bool bSideAtStart = Graph.Nodes[Edge.StartNode].Edges.size() >= 3 && (NodeRank[Edge.StartNode] > Rules.Rank || (OnRing[Edge.StartNode] && !Edge.bRoundabout));
+				const bool bSideAtEnd = Graph.Nodes[Edge.EndNode].Edges.size() >= 3 && (NodeRank[Edge.EndNode] > Rules.Rank || (OnRing[Edge.EndNode] && !Edge.bRoundabout));
 				int32_t Low = 0, High = 0;
 				for (int32_t i = 0; i + 1 < N; ++i)
 				{
@@ -401,104 +513,21 @@ namespace georoads
 
 		// --- roads whose surfaces overlap (a slip road merging, a wide junction, a car park) must be at the same height
 		// where they overlap, or the car meets a ledge where one surface rises above the other. These never change. ---
+		const std::vector<OverlapTie> Ties = FindOverlapTies(Graph, Points, Unknowns);
+		Log(Format("[Heights] %d places where roads overlap tied to one height", static_cast<int32_t>(Ties.size())));
 		std::vector<Entry> FixedEntries;
+		for (const OverlapTie& Tie : Ties)
 		{
-			constexpr double Cell = 2000.0;
-			std::unordered_map<uint64_t, std::vector<std::pair<int32_t, int32_t>>> Grid;	// cell -> (edge, segment start)
-			for (int32_t EdgeIndex = 0; EdgeIndex < NumEdges; ++EdgeIndex)
+			// strong: overlapping surfaces really are one surface
+			const int32_t Index[3] = { Tie.Point, Tie.A, Tie.B };
+			const double Coefficient[3] = { 1.0, -(1.0 - Tie.T), -Tie.T };
+			for (int32_t Row = 0; Row < 3; ++Row)
 			{
-				const std::vector<Vec2>& P = Points[EdgeIndex];
-				for (int32_t i = 0; i + 1 < Count(EdgeIndex); ++i)
+				for (int32_t Column = 0; Column < 3; ++Column)
 				{
-					const Vec2 Mid = (P[i] + P[i + 1]) * 0.5;
-					Grid[CellKey(FloorToInt(Mid.X / Cell), FloorToInt(Mid.Y / Cell))].emplace_back(EdgeIndex, i);
+					FixedEntries.emplace_back(Index[Row], Index[Column], Tie.Weight * Coefficient[Row] * Coefficient[Column]);
 				}
 			}
-
-			int32_t NumCouplings = 0;
-			struct Near { int32_t Edge; double Distance; int32_t Segment; double T; };
-			std::vector<Near> Nearest;
-			for (int32_t EdgeIndex = 0; EdgeIndex < NumEdges; ++EdgeIndex)
-			{
-				const RoadEdge& Edge = Graph.Edges[EdgeIndex];
-				const std::vector<Vec2>& P = Points[EdgeIndex];
-				const int32_t N = Count(EdgeIndex);
-				for (int32_t i = 0; i < N; ++i)
-				{
-					const int32_t HomeX = FloorToInt(P[i].X / Cell), HomeY = FloorToInt(P[i].Y / Cell);
-					const double Spacing = 0.5 * ((i > 0 ? Distance(P[i - 1], P[i]) : 0.0) + (i + 1 < N ? Distance(P[i], P[i + 1]) : 0.0));
-
-					// the nearest overlapping piece of each other road (in the order they're first met)
-					Nearest.clear();
-					for (int32_t X = HomeX - 1; X <= HomeX + 1; ++X)
-					{
-						for (int32_t Y = HomeY - 1; Y <= HomeY + 1; ++Y)
-						{
-							const auto Found = Grid.find(CellKey(X, Y));
-							if (Found == Grid.end())
-							{
-								continue;
-							}
-							for (const std::pair<int32_t, int32_t>& Entry : Found->second)
-							{
-								const RoadEdge& Other = Graph.Edges[Entry.first];
-								if (Entry.first == EdgeIndex || Other.Layer != Edge.Layer || (Other.bBridge || Other.bTunnel) != (Edge.bBridge || Edge.bTunnel))
-								{
-									continue;
-								}
-								const std::vector<Vec2>& Q = Points[Entry.first];
-								const Vec2 AB = Q[Entry.second + 1] - Q[Entry.second];
-								const double T = AB.SizeSquared() > 1.0 ? std::clamp(Dot(P[i] - Q[Entry.second], AB) / AB.SizeSquared(), 0.0, 1.0) : 0.0;
-								const double Gap = Distance(Q[Entry.second] + AB * T, P[i]);
-
-								// the two halves of a dual carriageway (one-way roads side by side going opposite ways)
-								// are built on one plane, across a median of up to MedianTie; where they really split onto
-								// two levels they're further apart than that
-								const Vec2 Own = (P[std::min(i + 1, N - 1)] - P[std::max(i - 1, 0)]).Normal();
-								const bool bCarriageways = Edge.bOneway && Other.bOneway && Dot(Own, AB.Normal()) < -0.85;
-								const double Reach = bCarriageways ? Edge.HalfWidth + Other.HalfWidth + MedianTie : 0.8 * (Edge.HalfWidth + Other.HalfWidth);
-								if (Gap > Reach)
-								{
-									continue;
-								}
-								auto Best = std::find_if(Nearest.begin(), Nearest.end(), [&](const Near& Item) { return Item.Edge == Entry.first; });
-								if (Best == Nearest.end())
-								{
-									Nearest.push_back({ Entry.first, Gap, Entry.second, T });
-								}
-								else if (Gap < Best->Distance)
-								{
-									*Best = { Entry.first, Gap, Entry.second, T };
-								}
-							}
-						}
-					}
-
-					const int32_t U = Unknown(EdgeIndex, i);
-					for (const Near& Item : Nearest)
-					{
-						const int32_t A = Unknown(Item.Edge, Item.Segment);
-						const int32_t B = Unknown(Item.Edge, Item.Segment + 1);
-						if (A == U || B == U)
-						{
-							continue;	// the same junction node: already one height
-						}
-						// strong: overlapping surfaces really are one surface
-						const double W = 20.0 * std::max(Spacing, 100.0);
-						const int32_t Index[3] = { U, A, B };
-						const double Coefficient[3] = { 1.0, -(1.0 - Item.T), -Item.T };
-						for (int32_t Row = 0; Row < 3; ++Row)
-						{
-							for (int32_t Column = 0; Column < 3; ++Column)
-							{
-								FixedEntries.emplace_back(Index[Row], Index[Column], W * Coefficient[Row] * Coefficient[Column]);
-							}
-						}
-						++NumCouplings;
-					}
-				}
-			}
-			Log(Format("[Heights] %d places where roads overlap tied to one height", NumCouplings));
 		}
 
 		// --- bending straight through nodes: where two roads carry on (more or less) in a line, the slope carries on too.
@@ -527,7 +556,7 @@ namespace georoads
 					}
 					const int32_t Next = bAtStart ? 1 : N - 2;
 					const Vec2 From = bAtStart ? P[0] : P.back();
-					Arms.push_back({ Unknown(EdgeIndex, Next), Distance(From, P[Next]), (P[Next] - From).Normal(), std::pow(BendLength(Edge.Highway), 4.0) });
+					Arms.push_back({ Unknown(EdgeIndex, Next), Distance(From, P[Next]), (P[Next] - From).Normal(), std::pow(BendLength(Edge.Highway), 4.0) * (Edge.bTunnel ? TunnelBend : 1.0) });
 				}
 			}
 			for (size_t i = 0; i < Arms.size(); ++i)
@@ -596,7 +625,9 @@ namespace georoads
 				const RoadEdge& Edge = Graph.Edges[EdgeIndex];
 				const std::vector<Vec2>& P = Points[EdgeIndex];
 				const int32_t N = Count(EdgeIndex);
-				const double Bend = std::pow(BendLength(Edge.Highway), 4.0);
+				// (a tunnel barely bends: it is re-laid evenly between its portals after, and stiff in here, with almost no ground
+				// to pull it, it levered the junctions at its portals up: Rond-Point Canton sat 3 m over its measured ground)
+				const double Bend = std::pow(BendLength(Edge.Highway), 4.0) * (Edge.bTunnel ? TunnelBend : 1.0);
 				for (int32_t i = 1; i + 1 < N; ++i)
 				{
 					AddBend(Unknown(EdgeIndex, i - 1), Unknown(EdgeIndex, i), Unknown(EdgeIndex, i + 1),
@@ -648,7 +679,7 @@ namespace georoads
 			}
 			ParallelFor(NumEdges, [&](int32_t EdgeIndex)
 			{
-				const int32_t Base = EdgeBase[EdgeIndex];
+				const int32_t Base = Unknowns.EdgeBase[EdgeIndex];
 				const int32_t Inner = std::max(0, Count(EdgeIndex) - 2);
 				for (int32_t k = 0; k < Inner; ++k)
 				{
@@ -674,7 +705,7 @@ namespace georoads
 				}
 				ParallelFor(NumEdges, [&](int32_t EdgeIndex)
 				{
-					const int32_t Base = EdgeBase[EdgeIndex];
+					const int32_t Base = Unknowns.EdgeBase[EdgeIndex];
 					const int32_t Inner = std::max(0, Count(EdgeIndex) - 2);
 					for (int32_t k = 0; k < Inner; ++k)
 					{
@@ -886,6 +917,26 @@ namespace georoads
 			}
 		}
 
+		// (how many road pieces 5 m or longer climb over 25% after each step: a step a car is thrown off, to see which step made it)
+		auto CountSteep = [&](const char* After)
+		{
+			int32_t Steep = 0, InTunnels = 0;
+			for (int32_t EdgeIndex = 0; EdgeIndex < NumEdges; ++EdgeIndex)
+			{
+				for (int32_t i = 0; i + 1 < Count(EdgeIndex); ++i)
+				{
+					const double Length = Distance(Points[EdgeIndex][i], Points[EdgeIndex][i + 1]);
+					if (Length >= 500.0 && std::abs(X[Unknown(EdgeIndex, i + 1)] - X[Unknown(EdgeIndex, i)]) > 0.25 * Length)
+					{
+						++Steep;
+						InTunnels += Graph.Edges[EdgeIndex].bTunnel ? 1 : 0;
+					}
+				}
+			}
+			Log(Format("[Heights] over 25%% after %s: %d pieces (%d in tunnels)", After, Steep, InTunnels));
+		};
+		CountSteep("the smooth solve");
+
 		// --- hard grade limits: the solve above only smooths, so steep stretches of the height data (or forest misread as
 		// ground) still come through. The road is clipped to its legal grade; the ground is reshaped to meet it later.
 		// But a road may only leave the ground by so much (its earthworks budget): where obeying the rule would need more
@@ -897,6 +948,7 @@ namespace georoads
 		// the ground by little. In the "rules" style it's held to the legal grades. ---
 		const bool bFollowLand = Options.bFollowLand;
 		Log(Format("[Heights] road style: %s", bFollowLand ? "land" : "rules"));
+		std::vector<std::vector<double>> Limit = GradeLimit;
 		if (Options.bGradeLimit)
 		{
 			const double LimitStart = Seconds();
@@ -926,7 +978,6 @@ namespace georoads
 				}
 			});
 
-			std::vector<std::vector<double>> Limit = GradeLimit;
 			if (bFollowLand)
 			{
 				// never flatter than the land's own trend: only bumps steeper than it are cut
@@ -944,6 +995,12 @@ namespace georoads
 				Links.assign(NumUnknowns, {});
 				for (int32_t EdgeIndex = 0; EdgeIndex < NumEdges; ++EdgeIndex)
 				{
+					// (not through a tunnel: it is re-laid after, evenly between its portals, and its heights inside the hill
+					// pushed the junctions at its portals up, half of a roundabout 2.5 m over the ground at Rond-Point Canton)
+					if (Graph.Edges[EdgeIndex].bTunnel)
+					{
+						continue;
+					}
 					const std::vector<Vec2>& P = Points[EdgeIndex];
 					for (int32_t i = 0; i + 1 < Count(EdgeIndex); ++i)
 					{
@@ -1037,361 +1094,33 @@ namespace georoads
 				Relaxed, Passes + 1, Moved1m, Moved3m, Moved10m, Largest / 100.0, Seconds() - LimitStart));
 		}
 
-		// --- grade separation: a bridge over another road must clear it. The height data alone can't tell (30 m cells
-		// smooth an interchange's embankments away), so a flyover would come out level with the road beneath it, a
-		// crossroads. Wherever a bridge crosses a road on a lower layer, the deck is lifted to clear it, and the lift
-		// eases out along the bridge and the roads leading onto it, gentler than their grade limit and rounded at both
-		// ends. The road underneath stays where it is. ---
+		CountSteep("the grade limits");
+
+		// --- the stacked roads: tunnels, bridges, other levels, whatever crosses them and the roads leading on to them, solved
+		// together by their rules (RoadStacks.cpp). The roads on the ground are where they stay; these fit round them ---
 		{
-			const double SeparationStart = Seconds();
-			struct Link { int32_t Other; double Length; };
-			std::vector<std::vector<Link>> Adjacent(NumUnknowns);
-			constexpr double Cell = 5000.0;
-			std::unordered_map<uint64_t, std::vector<std::pair<int32_t, int32_t>>> Grid;	// cell -> (edge, segment)
-			for (int32_t EdgeIndex = 0; EdgeIndex < NumEdges; ++EdgeIndex)
-			{
-				const std::vector<Vec2>& P = Points[EdgeIndex];
-				for (int32_t i = 0; i + 1 < Count(EdgeIndex); ++i)
-				{
-					const int32_t A = Unknown(EdgeIndex, i), B = Unknown(EdgeIndex, i + 1);
-					const double Length = Distance(P[i], P[i + 1]);
-					Adjacent[A].push_back({ B, Length });
-					Adjacent[B].push_back({ A, Length });
-					for (int32_t CX = FloorToInt(std::min(P[i].X, P[i + 1].X) / Cell); CX <= FloorToInt(std::max(P[i].X, P[i + 1].X) / Cell); ++CX)
-					{
-						for (int32_t CY = FloorToInt(std::min(P[i].Y, P[i + 1].Y) / Cell); CY <= FloorToInt(std::max(P[i].Y, P[i + 1].Y) / Cell); ++CY)
-						{
-							Grid[CellKey(CX, CY)].emplace_back(EdgeIndex, i);
-						}
-					}
-				}
-			}
-
-			// every place a bridge segment crosses a segment of a road on a lower layer, and how far short it falls
-			std::vector<double> Lift(NumUnknowns, 0.0);
-			int32_t Crossings = 0, Lifted = 0;
-			double MostLift = 0.0;
-			std::unordered_set<int32_t> Underneath;	// the points of roads passed over, at each crossing
-			std::unordered_set<int32_t> DeckPoints;	// the bridge points over them
-			std::vector<double> Reached;
-			auto Named = [](const std::string& Name, const char* Otherwise) { return Name.empty() ? std::string(Otherwise) : Name; };
-			for (int32_t DeckEdge = 0; DeckEdge < NumEdges; ++DeckEdge)
-			{
-				const RoadEdge& Deck = Graph.Edges[DeckEdge];
-				if (!Deck.bBridge)
-				{
-					continue;
-				}
-				const std::vector<Vec2>& P = Points[DeckEdge];
-				for (int32_t i = 0; i + 1 < Count(DeckEdge); ++i)
-				{
-					const Vec2 A = P[i], AB = P[i + 1] - P[i];
-					std::unordered_set<uint64_t> Seen;
-					for (int32_t CX = FloorToInt(std::min(P[i].X, P[i + 1].X) / Cell); CX <= FloorToInt(std::max(P[i].X, P[i + 1].X) / Cell); ++CX)
-					{
-						for (int32_t CY = FloorToInt(std::min(P[i].Y, P[i + 1].Y) / Cell); CY <= FloorToInt(std::max(P[i].Y, P[i + 1].Y) / Cell); ++CY)
-						{
-							const auto Nearby = Grid.find(CellKey(CX, CY));
-							if (Nearby == Grid.end())
-							{
-								continue;
-							}
-							for (const std::pair<int32_t, int32_t>& Other : Nearby->second)
-							{
-								const RoadEdge& Below = Graph.Edges[Other.first];
-								if (Other.first == DeckEdge || Below.Layer >= Deck.Layer || !Seen.insert(CellKey(Other.first, Other.second)).second)
-								{
-									continue;
-								}
-								const std::vector<Vec2>& Q = Points[Other.first];
-								const Vec2 C = Q[Other.second], CD = Q[Other.second + 1] - Q[Other.second];
-								const double Denominator = AB.X * CD.Y - AB.Y * CD.X;
-								if (std::abs(Denominator) < 1.0)
-								{
-									continue;	// parallel
-								}
-								const double T = ((C.X - A.X) * CD.Y - (C.Y - A.Y) * CD.X) / Denominator;
-								const double U = ((C.X - A.X) * AB.Y - (C.Y - A.Y) * AB.X) / Denominator;
-								// a real crossing passes through both segments; a bridge only touching its own approach road
-								// at its end (they share a point) is not one
-								const int32_t DeckA = Unknown(DeckEdge, i), DeckB = Unknown(DeckEdge, i + 1);
-								const int32_t BelowA = Unknown(Other.first, Other.second), BelowB = Unknown(Other.first, Other.second + 1);
-								if (T <= 0.01 || T >= 0.99 || U <= 0.01 || U >= 0.99
-									|| DeckA == BelowA || DeckA == BelowB || DeckB == BelowA || DeckB == BelowB)
-								{
-									continue;
-								}
-								++Crossings;
-								const double Gap = Lerp(X[DeckA], X[DeckB], T) - Lerp(X[BelowA], X[BelowB], U);
-								const double Short = BridgeClearance - Gap;
-								if (Short <= 1.0)
-								{
-									Log(Format("[Heights]   %s (%s) already clears %s (%s) by %.1f m", Named(Deck.Name, "unnamed bridge").c_str(), Deck.Highway.c_str(),
-										Named(Below.Name, "an unnamed road").c_str(), Below.Highway.c_str(), Gap / 100.0));
-									continue;
-								}
-								++Lifted;
-								Underneath.insert(BelowA);
-								Underneath.insert(BelowB);
-								DeckPoints.insert(DeckA);
-								DeckPoints.insert(DeckB);
-								Log(Format("[Heights]   %s (%s) lifted %.1f m to clear %s (%s)", Named(Deck.Name, "unnamed bridge").c_str(), Deck.Highway.c_str(), Short / 100.0,
-									Named(Below.Name, "an unnamed road").c_str(), Below.Highway.c_str()));
-								MostLift = std::max(MostLift, Short);
-
-								// ease the lift out over the distance a gentler-than-allowed grade needs (a smoothstep's
-								// steepest slope is 1.5 x its height over its length)
-								const double Grade = std::max(0.02, Design[DeckEdge].MaxGrade * BridgeRampFraction);
-								const double Reach = 1.5 * Short / Grade;
-								const double SegmentLength = AB.Size();
-								Reached.assign(NumUnknowns, std::numeric_limits<double>::max());
-								MinHeap Heap;
-								Reached[DeckA] = T * SegmentLength;
-								Reached[DeckB] = (1.0 - T) * SegmentLength;
-								Heap.emplace(Reached[DeckA], DeckA);
-								Heap.emplace(Reached[DeckB], DeckB);
-								while (!Heap.empty())
-								{
-									const std::pair<double, int32_t> Top = Heap.top();
-									Heap.pop();
-									if (Top.first > Reached[Top.second] || Top.first > Reach)
-									{
-										continue;
-									}
-									// the road underneath never rises with the bridge over it
-									if (Top.second == BelowA || Top.second == BelowB)
-									{
-										continue;
-									}
-									Lift[Top.second] = std::max(Lift[Top.second], Short * SmoothStep(0.0, Reach, Reach - Top.first));
-									for (const Link& Next : Adjacent[Top.second])
-									{
-										const double Along = Top.first + Next.Length;
-										if (Along < Reached[Next.Other])
-										{
-											Reached[Next.Other] = Along;
-											Heap.emplace(Along, Next.Other);
-										}
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-			// the lifts are rounded where they meet: two spreading round an interchange loop meet in a V, and where two
-			// overlap the higher wins with a crease (each a sharp dip a car is thrown out of). A few passes of averaging
-			// along the roads round them over ~40 m, far shorter than a lift, which keeps its shape; the decks keep their
-			// clearance, and the roads underneath stay put.
-			{
-				std::vector<double> Smooth = Lift;
-				for (int32_t Pass = 0; Pass < 12; ++Pass)
-				{
-					std::vector<double> Next = Smooth;
-					for (int32_t U = 0; U < NumUnknowns; ++U)
-					{
-						if (Underneath.count(U) || DeckPoints.count(U))
-						{
-							continue;	// held: what the bridge must clear, and what it passes over
-						}
-						double Sum = Smooth[U], Number = 1.0;
-						bool bNearLift = Smooth[U] > 0.0;
-						for (const Link& Item : Adjacent[U])
-						{
-							if (!Underneath.count(Item.Other))
-							{
-								Sum += Smooth[Item.Other];
-								Number += 1.0;
-								bNearLift |= Smooth[Item.Other] > 0.0;
-							}
-						}
-						if (bNearLift)
-						{
-							Next[U] = Sum / Number;
-						}
-					}
-					Smooth = std::move(Next);
-				}
-				Lift = std::move(Smooth);
-			}
-			for (int32_t U = 0; U < NumUnknowns; ++U)
-			{
-				X[U] += Lift[U];
-			}
-			Log(Format("[Heights] grade separation: %d places a bridge crosses a lower road, %d lifted to clear it (most %.1f m), %.2f s",
-				Crossings, Lifted, MostLift / 100.0, Seconds() - SeparationStart));
+			StackInput Input{ Graph, Points, Data, Design, Limit, Ties, Unknowns, ParallelFor, Options.Log, Options.Stuck };
+			SolveStacks(Input, X);
 		}
+		CountSteep("the stacks");
 
-		// --- and the other way: a tunnel under another road must clear it, its 6.5 m tube and its roof under that road's
-		// surface. Its road runs straight from mouth to mouth, so under a road at the ground's level (the Nordschleife's
-		// straight, a London street) its tube came up through it. Wherever a tunnel passes under a road on a higher layer
-		// too close, it dips there, easing out along it (and into its approaches) gentler than its grade limit; the road
-		// above stays where it is. ---
+		// --- no road under the sea: the game's sea is one plane at sea level, so a road below it is underwater, in a tunnel
+		// too (the tunnels under the Rocher dipped to -3.7 m to clear the ones above them, and the sea filled them). Nothing
+		// goes below SeaFloor; a tunnel dip then just bottoms out there ---
 		{
-			const double DipStart = Seconds();
-			struct Link { int32_t Other; double Length; };
-			std::vector<std::vector<Link>> Adjacent(NumUnknowns);
-			constexpr double Cell = 5000.0;
-			std::unordered_map<uint64_t, std::vector<std::pair<int32_t, int32_t>>> Grid;	// cell -> (edge, segment)
-			for (int32_t EdgeIndex = 0; EdgeIndex < NumEdges; ++EdgeIndex)
-			{
-				const std::vector<Vec2>& P = Points[EdgeIndex];
-				for (int32_t i = 0; i + 1 < Count(EdgeIndex); ++i)
-				{
-					const int32_t A = Unknown(EdgeIndex, i), B = Unknown(EdgeIndex, i + 1);
-					const double Length = Distance(P[i], P[i + 1]);
-					Adjacent[A].push_back({ B, Length });
-					Adjacent[B].push_back({ A, Length });
-					for (int32_t CX = FloorToInt(std::min(P[i].X, P[i + 1].X) / Cell); CX <= FloorToInt(std::max(P[i].X, P[i + 1].X) / Cell); ++CX)
-					{
-						for (int32_t CY = FloorToInt(std::min(P[i].Y, P[i + 1].Y) / Cell); CY <= FloorToInt(std::max(P[i].Y, P[i + 1].Y) / Cell); ++CY)
-						{
-							Grid[CellKey(CX, CY)].emplace_back(EdgeIndex, i);
-						}
-					}
-				}
-			}
-			std::vector<double> Dip(NumUnknowns, 0.0);
-			int32_t Crossings = 0, Dipped = 0;
-			double MostDip = 0.0;
-			std::unordered_set<int32_t> Above;	// the points of the roads passed under: held
-			std::unordered_set<int32_t> TubePoints;	// the tunnel's points under them
-			std::vector<double> Reached;
-			auto Named = [](const std::string& Name, const char* Otherwise) { return Name.empty() ? std::string(Otherwise) : Name; };
-			for (int32_t TubeEdge = 0; TubeEdge < NumEdges; ++TubeEdge)
-			{
-				const RoadEdge& Tube = Graph.Edges[TubeEdge];
-				if (!Tube.bTunnel)
-				{
-					continue;
-				}
-				const std::vector<Vec2>& P = Points[TubeEdge];
-				for (int32_t i = 0; i + 1 < Count(TubeEdge); ++i)
-				{
-					const Vec2 A = P[i], AB = P[i + 1] - P[i];
-					std::unordered_set<uint64_t> Seen;
-					for (int32_t CX = FloorToInt(std::min(P[i].X, P[i + 1].X) / Cell); CX <= FloorToInt(std::max(P[i].X, P[i + 1].X) / Cell); ++CX)
-					{
-						for (int32_t CY = FloorToInt(std::min(P[i].Y, P[i + 1].Y) / Cell); CY <= FloorToInt(std::max(P[i].Y, P[i + 1].Y) / Cell); ++CY)
-						{
-							const auto Nearby = Grid.find(CellKey(CX, CY));
-							if (Nearby == Grid.end())
-							{
-								continue;
-							}
-							for (const std::pair<int32_t, int32_t>& Other : Nearby->second)
-							{
-								const RoadEdge& Over = Graph.Edges[Other.first];
-								if (Other.first == TubeEdge || Over.Layer <= Tube.Layer || Over.bTunnel || !Seen.insert(CellKey(Other.first, Other.second)).second)
-								{
-									continue;
-								}
-								const std::vector<Vec2>& Q = Points[Other.first];
-								const Vec2 C = Q[Other.second], CD = Q[Other.second + 1] - Q[Other.second];
-								const double Denominator = AB.X * CD.Y - AB.Y * CD.X;
-								if (std::abs(Denominator) < 1.0)
-								{
-									continue;	// parallel
-								}
-								const double T = ((C.X - A.X) * CD.Y - (C.Y - A.Y) * CD.X) / Denominator;
-								const double U = ((C.X - A.X) * AB.Y - (C.Y - A.Y) * AB.X) / Denominator;
-								const int32_t TubeA = Unknown(TubeEdge, i), TubeB = Unknown(TubeEdge, i + 1);
-								const int32_t OverA = Unknown(Other.first, Other.second), OverB = Unknown(Other.first, Other.second + 1);
-								if (T <= 0.01 || T >= 0.99 || U <= 0.01 || U >= 0.99
-									|| TubeA == OverA || TubeA == OverB || TubeB == OverA || TubeB == OverB)
-								{
-									continue;
-								}
-								++Crossings;
-								const double Gap = Lerp(X[OverA], X[OverB], U) - Lerp(X[TubeA], X[TubeB], T);
-								const double Short = TunnelClearance - Gap;
-								if (Short <= 1.0)
-								{
-									continue;
-								}
-								++Dipped;
-								Above.insert(OverA);
-								Above.insert(OverB);
-								TubePoints.insert(TubeA);
-								TubePoints.insert(TubeB);
-								Log(Format("[Heights]   %s (%s, a tunnel) lowered %.1f m to pass under %s (%s)", Named(Tube.Name, "an unnamed tunnel").c_str(),
-									Tube.Highway.c_str(), Short / 100.0, Named(Over.Name, "an unnamed road").c_str(), Over.Highway.c_str()));
-								MostDip = std::max(MostDip, Short);
-								const double Grade = std::max(0.02, Design[TubeEdge].MaxGrade * BridgeRampFraction);
-								const double Reach = 1.5 * Short / Grade;
-								const double SegmentLength = AB.Size();
-								Reached.assign(NumUnknowns, std::numeric_limits<double>::max());
-								MinHeap Heap;
-								Reached[TubeA] = T * SegmentLength;
-								Reached[TubeB] = (1.0 - T) * SegmentLength;
-								Heap.emplace(Reached[TubeA], TubeA);
-								Heap.emplace(Reached[TubeB], TubeB);
-								while (!Heap.empty())
-								{
-									const std::pair<double, int32_t> Top = Heap.top();
-									Heap.pop();
-									if (Top.first > Reached[Top.second] || Top.first > Reach)
-									{
-										continue;
-									}
-									if (Top.second == OverA || Top.second == OverB)
-									{
-										continue;	// the road above never sinks with the tunnel under it
-									}
-									Dip[Top.second] = std::max(Dip[Top.second], Short * SmoothStep(0.0, Reach, Reach - Top.first));
-									for (const Link& Next : Adjacent[Top.second])
-									{
-										const double Along = Top.first + Next.Length;
-										if (Along < Reached[Next.Other])
-										{
-											Reached[Next.Other] = Along;
-											Heap.emplace(Along, Next.Other);
-										}
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-			// (rounded where two meet, as the lifts are; the tunnel under and the road over held)
-			{
-				std::vector<double> Smooth = Dip;
-				for (int32_t Pass = 0; Pass < 12; ++Pass)
-				{
-					std::vector<double> Next = Smooth;
-					for (int32_t U = 0; U < NumUnknowns; ++U)
-					{
-						if (Above.count(U) || TubePoints.count(U))
-						{
-							continue;
-						}
-						double Sum = Smooth[U], Number = 1.0;
-						bool bNearDip = Smooth[U] > 0.0;
-						for (const Link& Item : Adjacent[U])
-						{
-							if (!Above.count(Item.Other))
-							{
-								Sum += Smooth[Item.Other];
-								Number += 1.0;
-								bNearDip |= Smooth[Item.Other] > 0.0;
-							}
-						}
-						if (bNearDip)
-						{
-							Next[U] = Sum / Number;
-						}
-					}
-					Smooth = std::move(Next);
-				}
-				Dip = std::move(Smooth);
-			}
+			int32_t Raised = 0;
 			for (int32_t U = 0; U < NumUnknowns; ++U)
 			{
-				X[U] -= Dip[U];
+				if (X[U] < SeaFloor && Target[U] > -100.0)
+				{
+					X[U] = SeaFloor;
+					++Raised;
+				}
 			}
-			Log(Format("[Heights] tunnels: %d places one passes under a road, %d lowered to clear it (most %.1f m), %.2f s",
-				Crossings, Dipped, MostDip / 100.0, Seconds() - DipStart));
+			if (Raised > 0)
+			{
+				Log(Format("[Heights] %d road points kept above the sea (they were under it)", Raised));
+			}
 		}
 
 		// --- results ---

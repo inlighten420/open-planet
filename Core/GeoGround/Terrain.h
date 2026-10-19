@@ -70,8 +70,9 @@ namespace geoground
 		void BuildMasks(const georoads::OsmData& Data);
 
 		/** Gives every road real heights: sampled, forest-corrected, then the whole network solved together. With a bake
-		 *  that matches every road piece, its heights are used instead and nothing is solved. */
-		void ComputeRoadProfiles(georoads::RoadGraph& Graph, const RoadBake* Bake = nullptr) const;
+		 *  that matches every road piece, its heights are used instead and nothing is solved. Ramps the solve cannot fit are
+		 *  given a longer line beside their road (RerouteRamps) and everything solved once more (bRerouted: that second time). */
+		void ComputeRoadProfiles(georoads::RoadGraph& Graph, const RoadBake* Bake = nullptr, bool bRerouted = false) const;
 
 		/** How far the elevation data reads above the ground in forest (cm), measured by ComputeRoadProfiles */
 		float GetCanopyHeight() const { return CanopyHeight; }
@@ -81,6 +82,12 @@ namespace geoground
 
 		/** Indexes the road segments (with their final heights) so the ground can be shaped to them */
 		void BuildRoadIndex(std::shared_ptr<const georoads::RoadGraph> Graph);
+
+		/** The road surface as it was built (the meshes of the roads, their junctions and the paving between roads), so the ground
+		 *  stays under all of it: the road is wider than its segments where it meets another, and the ground at the road's edge
+		 *  is at the road's own height. Call after the road meshes are made and before any ground is. */
+		void SetRoadSurface(const std::vector<const MeshData*>& Meshes);
+
 
 		/** Raw elevation (cm): in forest it reads the treetops */
 		float DemHeight(const Vec2& Position) const;
@@ -208,6 +215,18 @@ namespace geoground
 		static constexpr double RoadCell = 2000.0;
 		std::unordered_map<uint64_t, std::vector<int32_t>> RoadGrid;
 
+		/** The road surface's triangles, in 4 m cells: the corners' places and heights (cm), and whose they are (a road's edge,
+		 *  or -(node + 1) for a junction's surface) */
+		struct RoadTriangle
+		{
+			float X[3], Y[3], Z[3];
+			int32_t Owner;
+		};
+		static constexpr double TriangleCell = 400.0;
+		std::vector<RoadTriangle> RoadTriangles;
+		std::unordered_map<uint64_t, std::vector<int32_t>> TriangleGrid;
+		std::vector<uint8_t> EdgeDecked;	// per road: some of it is a deck for the ground (the ground stays clear below it)
+
 		bool bFollowLand = true;
 		std::vector<float> EdgeReach;	// per road: the furthest its earthworks reach (cm), 0 = no corridor
 		std::vector<float> EdgeKerb;	// per road: its kerb height (cm) in town, 0 in the country
@@ -228,7 +247,7 @@ namespace geoground
 		};
 		std::vector<Portal> Portals;
 		std::vector<Tube> Tubes;
-		bool InPortalCut(const Vec3f& Point) const;
+		bool InPortalCut(const Vec3f& Point, float* OutRoad = nullptr) const;
 
 		/** How far a corridor reaches from a road's middle (cm) for a grid this fine */
 		float CorridorExtent(int32_t Edge, double Spacing = NearSpacing) const;

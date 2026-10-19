@@ -4,6 +4,10 @@
 class_name GameSettings
 extends RefCounted
 
+# The game's version: on the start screen, in bug reports and the log, and in the release zip's name (package_godot.ps1
+# reads it from here). Friends can only play together on the same one
+const VERSION := "0.2"
+
 const QUALITY := "/Script/Geodrive.GeodriveQualitySubsystem"
 const WHEEL := "/Script/GeoFFB.GeoFFBSubsystem"
 const GODOT := "Godot"
@@ -154,8 +158,95 @@ func _bool(section: Dictionary, key: String, fallback: bool) -> bool:
 # Where the map data and what's fetched are kept: in a packaged game the "data" folder beside Geodrive.exe (the regions
 # and heights it came with; terrain and land cover fetched into it as you go); in the editor, this PC's own cache
 static func cache_dir() -> String:
+	if _cache_dir == "":
+		_cache_dir = _find_cache_dir()
+	return _cache_dir
+
+
+static var _cache_dir := ""
+
+const DATA_MEMORY := "user://data_folder.txt"	# (where the maps were last found: they outlive an update's new folder)
+
+# Where the maps are, kept for the next version to find (called when the game starts with maps, and when it has just made some)
+static func remember_data(folder: String) -> void:
+	var memory := FileAccess.open(DATA_MEMORY, FileAccess.WRITE)
+	if memory:
+		memory.store_string(folder)
+
+
+static func has_maps_in(folder: String) -> bool:
+	return _has_maps(folder)
+
+
+# Places in a data folder that are the player's own: not the demo areas that ship with the game (regions/demo.json says
+# which), which every package has, and which must not make a new version think it already has the maps an earlier one's
+# folder holds
+static func _own_places(folder: String) -> int:
+	var shipped := ["monaco.pmtiles"]
+	for demo in _demos_in(folder):
+		shipped.append(String(demo["stem"]) + ".pmtiles")
+	var count := 0
+	for file in DirAccess.get_files_at(folder.path_join("regions")):
+		if file.ends_with(".pmtiles") and not shipped.has(file):
+			count += 1
+	return count
+
+
+# The demo areas the game shipped with ({stem, name, lat, lon} each) whose maps are here
+static func demo_areas() -> Array:
+	var out := []
+	for demo in _demos_in(cache_dir()):
+		if FileAccess.file_exists(cache_dir().path_join("regions/%s.pmtiles" % demo["stem"])):
+			out.append(demo)
+	if out.is_empty() and FileAccess.file_exists(cache_dir().path_join("regions/monaco.pmtiles")):
+		out.append({"stem": "monaco", "name": "Monte Carlo, Monaco", "lat": 43.7390, "lon": 7.4276})	# (an older package's demo)
+	return out
+
+
+# regions/demo.json: {"demos": [{stem, name, lat, lon}, ...]} (or one such, as the first packages with it wrote)
+static func _demos_in(folder: String) -> Array:
+	var text := FileAccess.get_file_as_string(folder.path_join("regions/demo.json")).strip_edges().trim_prefix("\uFEFF")
+	var parsed = JSON.parse_string(text) if text != "" else null
+	var list: Array = parsed.get("demos", [parsed]) if parsed is Dictionary else []
+	return list.filter(func(d): return d is Dictionary and d.has("stem") and d.has("lat") and d.has("lon") and d.has("name"))
+
+
+# The demos this version shipped with, copied into the folder of maps it uses (an earlier version's): there, the menu
+# finds them as it would beside it (their maps and heights; the far terrain and land cover are fetched as needed)
+static func _bring_demos(from: String, into: String) -> void:
+	var demos := _demos_in(from)
+	if demos.is_empty():
+		return
+	for demo in demos:
+		var stem := String(demo["stem"])
+		for relative in ["regions/%s.pmtiles" % stem, "regions/%s.region.json" % stem, "regions/%s.world.json" % stem,
+				"regions/%s.airports.json" % stem, "regions/%s.games.json" % stem, "heights/cop_%s.pmtiles" % stem, "heights/%s.pmtiles" % stem]:
+			var source := from.path_join(relative)
+			var target := into.path_join(relative)
+			if FileAccess.file_exists(source) and (not FileAccess.file_exists(target) or FileAccess.get_file_as_bytes(target).size() != FileAccess.get_file_as_bytes(source).size()):
+				DirAccess.make_dir_recursive_absolute(target.get_base_dir())
+				DirAccess.copy_absolute(source, target)
+	DirAccess.copy_absolute(from.path_join("regions/demo.json"), into.path_join("regions/demo.json"))
+
+
+static func _has_maps(folder: String) -> bool:
+	return DirAccess.dir_exists_absolute(folder.path_join("regions")) and _own_places(folder) > 0
+
+
+# A new version unzipped to a new folder starts with no maps of its own: use the folder the maps were in last time
+# (remembered across versions) while it's still there, so an update keeps everyone's maps without copying gigabytes
+static func _find_cache_dir() -> String:
 	var beside := OS.get_executable_path().get_base_dir().path_join("data")
 	if OS.has_feature("template") and DirAccess.dir_exists_absolute(beside):
+		if _has_maps(beside):
+			remember_data(beside)
+			return beside
+		if FileAccess.file_exists(DATA_MEMORY):
+			var old := FileAccess.get_file_as_string(DATA_MEMORY).strip_edges()
+			if old != "" and DirAccess.dir_exists_absolute(old) and _has_maps(old):
+				print("Geodrive: using the maps from the earlier version's folder: ", old)
+				_bring_demos(beside, old)
+				return old
 		return beside
 	return OS.get_environment("LOCALAPPDATA").path_join("Geodrive/Cache")
 

@@ -10,6 +10,18 @@
 
 namespace georoads
 {
+	/** A ramp (a *_link road) the stacked roads' solve could not fit: steeper than its rule allows, or too close under or
+	 *  over another road. Excess: the height it is short by, summed along it (cm); At: the worst place; Other: the road it
+	 *  is too close to (-1: only too steep) */
+	struct StuckRoad
+	{
+		int32_t Edge = -1;
+		int32_t Other = -1;
+		double Excess = 0.0;
+		double Grade = 0.0;
+		Vec2 At;
+	};
+
 	struct HeightOptions
 	{
 		/** "Land" style: roads follow the land the way the real ones do, only short bumps from the height data are cut.
@@ -28,6 +40,9 @@ namespace georoads
 		/** The host's job system (empty: plain threads) and log (empty: quiet) */
 		ParallelForFn ParallelFor;
 		LogFn Log;
+
+		/** Out (optional): the ramps the solve could not fit, for RerouteRamps */
+		std::vector<StuckRoad>* Stuck = nullptr;
 	};
 
 	/**

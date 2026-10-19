@@ -1,0 +1,38 @@
+name: Bug report
+description: Something wrong in the game: a recording (F4), a picture (F12) or a bug report from Settings, sent with F6
+title: "Bug: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you. The game filled in what it could; add what happened in your own words, and drag the file it made
+        (the folder opened beside this page) into the box at the bottom.
+  - type: textarea
+    id: what
+    attributes:
+      label: What went wrong
+      description: What you did, what happened, and what you expected
+    validations:
+      required: true
+  - type: input
+    id: where
+    attributes:
+      label: Where
+      description: Latitude, longitude (filled in by the game)
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Filled in by the game
+  - type: textarea
+    id: details
+    attributes:
+      label: Details from the game
+      description: Filled in by the game
+      render: text
+  - type: textarea
+    id: files
+    attributes:
+      label: The recording, bug report or picture
+      description: Drag the file here (a zip from F4 or Report a bug, or a picture from F12)

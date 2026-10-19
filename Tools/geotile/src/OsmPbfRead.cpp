@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "OsmJson.h"
+#include "Progress.h"
 #include "miniz.h"
 
 #ifdef _WIN32
@@ -471,9 +472,10 @@ namespace geotile
 
 		/** Runs Work(i) for every block on all cores */
 		template <typename F>
-		void ForEachBlock(size_t Count, F Work)
+		void ForEachBlock(size_t Count, F Work, const ProgressSpan* Span = nullptr)
 		{
 			std::atomic<size_t> NextIndex{ 0 };
+			std::atomic<size_t> Finished{ 0 };
 			std::vector<std::thread> Threads;
 			const unsigned Cores = std::max(1u, std::thread::hardware_concurrency());
 			std::mutex ErrorLock;
@@ -493,6 +495,7 @@ namespace geotile
 							std::lock_guard<std::mutex> Guard(ErrorLock);
 							Error = E.what();
 						}
+						ReportChunk(Span, ++Finished, Count);
 					}
 				});
 			}
@@ -740,6 +743,7 @@ namespace geotile
 		// pass 1: only the node ids of the kept ways (every use, so the ones used twice can be told)
 		std::vector<std::vector<int64_t>> RefsByBlock(Blocks.size());
 		std::atomic<uint64_t> WaysSeen{ 0 }, WaysKept{ 0 };
+		const ProgressSpan WaysSpan{ 0.0, 0.03, "reading the map" };
 		ForEachBlock(Blocks.size(), [&](size_t i)
 		{
 			uint64_t Seen = 0;
@@ -754,7 +758,7 @@ namespace geotile
 					RefsByBlock[i].insert(RefsByBlock[i].end(), W.Nodes.begin(), W.Nodes.end());
 				}
 			}
-		});
+		}, &WaysSpan);
 		std::vector<int64_t>().swap(InBox);
 		Stats.WaysSeen = WaysSeen;
 		Stats.WaysKept = WaysKept;
@@ -786,6 +790,7 @@ namespace geotile
 		Positions.resize(NodeIds.size());
 		Found.assign(NodeIds.size(), 0);
 		std::atomic<uint64_t> NodesSeen{ 0 }, NodesKept{ 0 };
+		const ProgressSpan NodesSpan{ 0.03, 0.06, "finding where things are" };
 		ForEachBlock(Blocks.size(), [&](size_t i)
 		{
 			if (!Blocks[i].bHasNodes)
@@ -803,7 +808,7 @@ namespace geotile
 				Found[Index] = 1;
 			}
 			NodesKept += Nodes.size();
-		});
+		}, &NodesSpan);
 		Stats.NodesSeen = NodesSeen;
 		Stats.NodesKept = NodesKept;
 		Stats.MissingNodes = NodeIds.size() - Stats.NodesKept;
@@ -811,7 +816,7 @@ namespace geotile
 
 	PbfBands::~PbfBands() = default;
 
-	OsmSet PbfBands::ReadBand(const std::function<bool(const LatLon&)>& Inside) const
+	OsmSet PbfBands::ReadBand(const std::function<bool(const LatLon&)>& Inside, const ProgressSpan* Span) const
 	{
 		const std::vector<BlockRef>& Blocks = P->Blocks;
 		auto Where = [&](int64_t Id) -> const LatLon*
@@ -839,7 +844,7 @@ namespace geotile
 					WaysByBlock[i].push_back(std::move(W));
 				}
 			}
-		});
+		}, Span);
 
 		OsmSet Set;
 		for (std::vector<Way>& Ways : WaysByBlock)

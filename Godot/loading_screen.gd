@@ -6,7 +6,7 @@ class_name LoadingScreen
 extends CanvasLayer
 
 const BACKGROUND := Color(0.004, 0.008, 0.02)
-const CREDITS := "Map data (c) OpenStreetMap contributors, ODbL - openstreetmap.org/copyright.   Heights: SRTM courtesy of " 	+ "the U.S. Geological Survey; ETOPO1, NOAA; Terrain Tiles via AWS Open Data. Produced using Copernicus WorldDEM-30 " 	+ "(c) DLR e.V. 2010-2014 and (c) Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European " 	+ "Union and ESA. Contains Environment Agency information (c) Environment Agency and/or database right (OGL v3). " 	+ "Heights (c) GeoBasis-DE / LVermGeoRP, dl-de/by-2-0. Land cover (c) ESA WorldCover project 2021 / Contains modified " 	+ "Copernicus Sentinel data (2021) processed by ESA WorldCover consortium (CC BY 4.0). World map: Natural Earth. " 	+ "Open-Planet is free software (AGPL-3.0)."
+const CREDITS := "Map data (c) OpenStreetMap contributors, ODbL - openstreetmap.org/copyright.   Heights: SRTM courtesy of " 	+ "the U.S. Geological Survey; ETOPO1, NOAA; Terrain Tiles via AWS Open Data. Produced using Copernicus WorldDEM-30 " 	+ "(c) DLR e.V. 2010-2014 and (c) Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European " 	+ "Union and ESA. Contains Environment Agency information (c) Environment Agency and/or database right (OGL v3). " 	+ "Heights (c) GeoBasis-DE / LVermGeoRP, dl-de/by-2-0. Heights: IGN RGE ALTI (c) IGN, Licence Ouverte Etalab 2.0. Land cover (c) ESA WorldCover project 2021 / Contains modified " 	+ "Copernicus Sentinel data (2021) processed by ESA WorldCover consortium (CC BY 4.0). World map: Natural Earth. " 	+ "Open-Planet is free software (AGPL-3.0)."
 
 var loading := false
 var status := ""
@@ -107,5 +107,9 @@ func _process(delta: float) -> void:
 	else:
 		text = text.trim_suffix("...")
 		var dots := int(_time * 2.5) % 4
-		_status_label.text = text + ".".repeat(dots) + " ".repeat(3 - dots)
+		# the stage, and how long it has been going: so slow is easy to tell from stuck
+		var seconds := int(_time)
+		_status_label.text = text + ".".repeat(dots) + " ".repeat(3 - dots) + "   %d:%02d" % [seconds / 60, seconds % 60]
+		if _time > 20.0:
+			_status_label.text += "\nStill working: a big, dense city takes a while to build the first time. Nothing is stuck."
 	_status_label.add_theme_color_override("font_color", Color(1.0, 0.4, 0.35) if error else Color(0.8, 0.82, 0.86))

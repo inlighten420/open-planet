@@ -322,12 +322,16 @@ namespace geoworld
 		NetworkOptions.bUK = R.bUK;
 		NetworkOptions.Country = R.Country;
 		NetworkOptions.Log = R.Log;
+		NetworkOptions.Land = &LandWays;
 		georoads::RoadGraph Graph;
 		georoads::BuildRoadGraph(RoadWays, Graph, NetworkOptions);
 		RoadWays = georoads::OsmData();
 		Lap("roads");
 		Stage("Road heights");
+		// (the truth test: the roads as they would come out without the fine heights; the ground after keeps them, to measure by)
+		P->Raster->bIgnoreFine = R.bTruth && P->bUsedLidar;
 		Ground.ComputeRoadProfiles(Graph);
+		P->Raster->bIgnoreFine = false;
 		if (R.Previous && R.Previous->Roads && !R.PinnedCells.empty())
 		{
 			const georoads::SeamStats Seam = georoads::JoinSeams(Graph, *R.Previous->Roads, R.PinnedCells, Size, 40000.0, ParallelFor,
@@ -353,11 +357,16 @@ namespace geoworld
 		MeshOptions.bUK = R.bUK;
 		MeshOptions.bDriveLeft = R.Country.bDriveLeft;
 		MeshOptions.bWhiteEdges = R.Country.Style == georoads::RoadStyle::Europe;
+		MeshOptions.bYellowCentre = R.Country.Style == georoads::RoadStyle::US;
 		MeshOptions.ParallelFor = ParallelFor;
 		MeshOptions.Log = R.Log;
+		std::vector<geomesh::JunctionArea> JunctionAreas;	// (kept for the buildings, after the road meshes are filed away)
 		{
 			geomesh::RoadMeshes RoadMeshes;
 			geomesh::BuildRoads(*P->Roads, RoadMeshes, MeshOptions);
+			// the ground stays under all the road as built: its junctions and the paving between roads are wider than its roads
+			Ground.SetRoadSurface({ &RoadMeshes.Roads[0], &RoadMeshes.Roads[1], &RoadMeshes.Roads[2] });
+			JunctionAreas = std::move(RoadMeshes.Junctions);
 			if (R.bScanRoads)
 			{
 				ScanRoads(*P->Roads, { &RoadMeshes.Roads[0], &RoadMeshes.Roads[1], &RoadMeshes.Roads[2] }, Ground, ParallelFor, R.bUK, P->Scan);
@@ -387,6 +396,7 @@ namespace geoworld
 		Stage("Buildings");
 		{
 			geomesh::BuildingMeshes Buildings;
+			MeshOptions.Junctions = &JunctionAreas;
 			geomesh::BuildBuildings(LandWays, [&Ground](const Vec2& Point) { return Ground.GroundHeight(Point); }, Buildings, P->Roads.get(), MeshOptions);
 			P->NumBuildings = Buildings.NumBuildings;
 			P->Outlines = std::move(Buildings.Outlines);

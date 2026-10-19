@@ -14,6 +14,7 @@
 #include <string>
 
 #include "OsmTypes.h"
+#include "Progress.h"
 
 namespace geotile
 {
@@ -57,7 +58,7 @@ namespace geotile
 		std::vector<int64_t> Shared;
 
 		/** The kept ways with a point Inside, and their nodes */
-		OsmSet ReadBand(const std::function<bool(const LatLon&)>& Inside) const;
+		OsmSet ReadBand(const std::function<bool(const LatLon&)>& Inside, const ProgressSpan* Span = nullptr) const;
 
 	private:
 		struct Impl;

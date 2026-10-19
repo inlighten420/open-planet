@@ -89,8 +89,8 @@ func _physics_process(delta: float) -> void:
 	var sprint := false
 	var jump := false
 	if keys:
-		forward = float(Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP)) - float(Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN))
-		right = float(Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT)) - float(Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT))
+		forward = Controls.axis("back", "forward")
+		right = Controls.axis("left", "right")
 		var pad := gamepad()
 		var stick := Vector2(Input.get_joy_axis(pad, JOY_AXIS_LEFT_X), Input.get_joy_axis(pad, JOY_AXIS_LEFT_Y)) if pad >= 0 else Vector2.ZERO
 		if stick.length() > 0.15:
@@ -100,9 +100,9 @@ func _physics_process(delta: float) -> void:
 		if look.length() > 0.15:
 			rotation.y -= look.x * STICK_TURN * delta
 			pitch = clampf(pitch - look.y * STICK_TURN * delta, -1.5, 1.5)
-		run = Input.is_key_pressed(KEY_SHIFT) or (pad >= 0 and Input.is_joy_button_pressed(pad, JOY_BUTTON_LEFT_STICK))
-		sprint = Input.is_key_pressed(KEY_CTRL) or (pad >= 0 and Input.is_joy_button_pressed(pad, JOY_BUTTON_RIGHT_SHOULDER))
-		jump = Input.is_key_pressed(KEY_SPACE) or (pad >= 0 and Input.is_joy_button_pressed(pad, JOY_BUTTON_A))
+		run = Controls.down("run") or (pad >= 0 and Input.is_joy_button_pressed(pad, JOY_BUTTON_LEFT_STICK))
+		sprint = Controls.down("sprint") or (pad >= 0 and Input.is_joy_button_pressed(pad, JOY_BUTTON_RIGHT_SHOULDER))
+		jump = Controls.down("jump") or (pad >= 0 and Input.is_joy_button_pressed(pad, JOY_BUTTON_A))
 	steer(forward, right, run, jump, delta, sprint)
 
 

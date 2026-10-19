@@ -1,0 +1,42 @@
+name: Road edit (fix the world)
+description: A road the game builds wrong, drawn the way it really is in the game's road editor (F2, then F6 to send)
+title: "Road edit near "
+labels: ["road edit"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for fixing the world. Your drawing is a guideline, not an exact line: we use it to make the game build
+        roads like it right everywhere. A picture (F12) helps too: drag it into the box at the bottom.
+        How the road editor works, and other ways to help: [CONTRIBUTING.md](https://github.com/inlighten420/open-planet/blob/main/CONTRIBUTING.md).
+  - type: textarea
+    id: why
+    attributes:
+      label: What's wrong, and what to look for
+      description: In a few words, what the game gets wrong here (a ramp too steep, a junction that doesn't join, a road in the wrong place...)
+      placeholder: The off-ramp bends down into the main road; in reality it runs on beside it and climbs before it turns.
+    validations:
+      required: true
+  - type: input
+    id: where
+    attributes:
+      label: Where
+      description: Latitude, longitude (filled in by the game)
+  - type: textarea
+    id: edit
+    attributes:
+      label: The road edit
+      description: Filled in by the game (or paste what Ctrl+C copied in the road editor)
+      render: text
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Filled in by the game
+  - type: textarea
+    id: pictures
+    attributes:
+      label: Pictures (optional)
+      description: Drag pictures here (F12 saves them in Pictures, Open-Planet, with a note of where they were taken)

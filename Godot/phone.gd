@@ -98,7 +98,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not visible:
 		return
 	if event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode in [KEY_ESCAPE, KEY_TAB]:
+		if event.keycode in [KEY_ESCAPE, KEY_TAB] or Controls.hit(event, "phone"):
 			get_viewport().set_input_as_handled()
 			back()
 		elif page == "home" and event.keycode >= KEY_1 and event.keycode < KEY_1 + APPS.size():

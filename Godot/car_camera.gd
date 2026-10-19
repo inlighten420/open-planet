@@ -20,7 +20,7 @@ const MOUSE_RETURN := 1.0
 const MOUSE_DEGREES := 0.15
 # the free camera (m/s) and the map (m above the car)
 const FREE_SPEED := 40.0
-const FREE_FAST := 250.0
+const FREE_FAST := 150.0
 const MAP_MIN := 30.0
 const MAP_MAX := 25000.0
 
@@ -66,6 +66,9 @@ func set_view(new_view: int) -> void:
 
 func cycle_view() -> void:
 	set_view((view + 1) % View.size())
+
+
+var speed_scale := 1.0	# (the free camera's speed, less while the world has jobs queued: it can't build as fast as the camera flies)
 
 
 func start_free() -> void:
@@ -157,9 +160,9 @@ func update(delta: float) -> void:
 
 	# looking round: Z / X turn the view to the side, V looks back, the mouse adds to it and drifts back to the road
 	# (and the wheel's buttons: up to 90 degrees to the side, 30 up or down; let go and the view goes back to the road)
-	var side := clampf(wheel_look.x + float(_pressed(KEY_X)) - float(_pressed(KEY_Z)), -1.0, 1.0)
+	var side := clampf(wheel_look.x + float(_held("look_right")) - float(_held("look_left")), -1.0, 1.0)
 	var target := -side * PI * 0.5
-	if _pressed(KEY_V) or wheel_look_back:
+	if _held("look_back") or wheel_look_back:
 		target = PI
 	_look_pitch = lerp(_look_pitch, clampf(wheel_look.y, -1.0, 1.0) * deg_to_rad(30.0), 1.0 - exp(-LOOK_SPEED * delta))
 	_mouse_yaw = lerp(_mouse_yaw, 0.0, 1.0 - exp(-MOUSE_RETURN * delta))
@@ -203,15 +206,16 @@ func update(delta: float) -> void:
 
 func _update_free(delta: float) -> void:
 	var move := Vector3.ZERO
-	move.z -= float(_pressed(KEY_W) or _pressed(KEY_UP)) - float(_pressed(KEY_S) or _pressed(KEY_DOWN))
-	move.x += float(_pressed(KEY_D) or _pressed(KEY_RIGHT)) - float(_pressed(KEY_A) or _pressed(KEY_LEFT))
-	move.y += float(_pressed(KEY_E)) - float(_pressed(KEY_Q))
-	var speed := FREE_FAST if _pressed(KEY_SHIFT) else FREE_SPEED
+	move.z -= float(_held("forward")) - float(_held("back"))
+	move.x += float(_held("right")) - float(_held("left"))
+	move.y += float(_held("gear_up")) - float(_held("gear_down"))
+	var speed := (FREE_FAST if _held("run") else FREE_SPEED) * speed_scale
 	rotation = Vector3(_free_pitch, _free_yaw, 0.0)
 	position += global_transform.basis * move * speed * delta
 	fov = 80.0
 	near = 0.1
 	far = view_far
+	cull_mask = ALL_LAYERS & ~hidden_layers	# (the road editor hides the ground, buildings and the rest one at a time)
 
 
 func _update_map() -> void:
@@ -227,5 +231,5 @@ func view_name() -> String:
 	return VIEW_NAMES[view]
 
 
-func _pressed(key: Key) -> bool:
-	return keys and Input.is_key_pressed(key)
+func _held(action: String) -> bool:
+	return keys and Controls.down(action)

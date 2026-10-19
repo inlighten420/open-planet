@@ -145,7 +145,7 @@ func _ask_places(tile: Vector2i) -> void:
 		_tiles[tile] = "had"
 		_add_places(found)
 		print("Geodrive: %d places for games round here" % found.size()))
-	_asking.request(OVERPASS, ["User-Agent: Open-Planet/0.1 (development build)", "Content-Type: application/x-www-form-urlencoded"],
+	_asking.request(OVERPASS, ["User-Agent: Open-Planet/0.2 (https://github.com/inlighten420/open-planet)", "Content-Type: application/x-www-form-urlencoded"],
 		HTTPClient.METHOD_POST, "data=" + query.uri_encode())
 
 

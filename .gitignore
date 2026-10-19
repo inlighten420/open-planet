@@ -44,3 +44,7 @@ Tools/cartest/bin/
 Tools/cartest/obj/
 Tools/buildtest/bin/
 Tools/buildtest/obj/
+
+# Python caches, and the truth test's combined output (Tools/truth_areas.ps1 writes it on every run)
+__pycache__/
+docs/truth_all.csv

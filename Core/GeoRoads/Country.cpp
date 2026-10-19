@@ -38,7 +38,7 @@ namespace georoads
 		}
 		Rules.bDriveLeft = Left.count(Code) > 0;
 		Rules.bMph = Code == "US" || Code == "LR" || Code == "MM";	// (signed in mph; Liberia and Myanmar too)
-		Rules.Style = RoadStyle::Europe;
+		Rules.Style = Code == "US" || Code == "CA" ? RoadStyle::US : RoadStyle::Europe;
 		return Rules;
 	}
 }

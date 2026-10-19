@@ -55,6 +55,8 @@ namespace godot
 		void set_follow_land(bool bOn);
 		bool get_follow_land() const;
 		void set_kerbs(bool bOn);
+		/** The truth test: roads solved as if there were no LiDAR, to measure them against it (--truth) */
+		void set_truth(bool bOn);
 		bool get_kerbs() const;
 
 		/** Scan every road of each piece built for bumps, jumps and holes (Core's road scan): the summary to the log, every
@@ -106,10 +108,16 @@ namespace godot
 		 *  road's height), "direction" (along it, level), "name", "highway", "distance"; by distance along the ground, as the
 		 *  Unreal game finds it. Drivable only: not footpaths, steps, cycle paths, tracks and the like */
 		Dictionary nearest_road(const Vector3& Position, double MaxDistance, bool bDrivableOnly = true) const;
+		/** Every road of the area (as solved: heights, levels, bridges, tunnels) to a JSON file, for the road diagram (Tools/road_levels.py) */
+		bool dump_roads(const String& Path) const;
 
 		/** The roads' centrelines round a point (within Radius m, as their height solver left them): pairs of points, for
 		 *  drawing (the Unreal game's geo.World.Debug) */
 		PackedVector3Array road_lines(const Vector3& Position, double Radius) const;
+
+		/** The roads round a point (within Radius m), whole, for the road editor: each a Dictionary of its id, name,
+		 *  class, level, half width (m), the junctions at its ends and its points (Godot's, on its surface) */
+		Array road_points(const Vector3& Position, double Radius) const;
 
 		/** The M map over the view from above (the Unreal game's): the piece's main roads as lines (trunk orange, the rest
 		 *  white), and street names that don't overlap, drawn onto a canvas item through the camera */

@@ -33,6 +33,7 @@ var in_uk := false
 
 var page := "main"
 var settings_tab := 0
+var controls_kind := 0	# (the Controls tab: 0 keyboard and mouse, 1 steering wheel)
 var chosen_area: Dictionary = {}
 
 var _shade: ColorRect
@@ -188,6 +189,8 @@ func show_page(new_page: String) -> void:
 			_places_page()
 		"events":
 			_events_page()
+		"demos":
+			_demos_page()
 		_:
 			_main_page()
 	# the first button (or the open settings tab) takes the keys and the gamepad
@@ -327,17 +330,25 @@ func _main_page() -> void:
 	_subtitle.text = area_name
 	_button("Resume", close, "Tab: your phone (the map, your cars, games, building, friends)", true, 30)
 	_button("Settings", show_page.bind("settings"), "Picture, controls and wheel, sound, game")
-	_button("Quit", func(): get_tree().quit())
+	_button("Quit", func(): game.quit_game() if game else get_tree().quit())
 
 
 # The start screen: the one big thing is going back to where you were; then somewhere new (the globe: click a spot),
 # friends; settings and quit small at the bottom
 func _start_page() -> void:
-	_subtitle.text = "The real world, on foot, by car or plane."
+	_subtitle.text = "The real world, on foot, by car or plane.    Version %s" % GameSettings.VERSION
 	var last := UnrealSettings.last_spot()
 	if not last.is_empty():
 		_button("Continue", _drive.bind(last["lat"], last["lon"], last["name"]), "Back to " + last["name"], true, 34)
-	_button("Play somewhere new", _open_world_map, "Spin the globe and click where you want to be", true, 34 if last.is_empty() else 24)
+	# a tiny area that ships with the game: ready at once, to try driving, walking and building in while a place you pick
+	# downloads (the world map: Download, then play on here)
+	var demos := GameSettings.demo_areas()
+	var demo_ready := not demos.is_empty()
+	if demos.size() == 1:
+		_button("Try the demo: %s" % demos[0]["name"], _drive.bind(float(demos[0]["lat"]), float(demos[0]["lon"]), demos[0]["name"]), "Ready now: drive, walk, fly and build while the place you choose downloads", true, 34 if last.is_empty() else 24)
+	elif demo_ready:
+		_button("Try a demo", show_page.bind("demos"), "Places ready now: drive, walk, fly and build while the place you choose downloads", true, 34 if last.is_empty() else 24)
+	_button("Play somewhere new", _open_world_map, "Spin the globe and click where you want to be", true, 34 if (last.is_empty() and not demo_ready) else 24)
 	_button("Play an event", show_page.bind("events"), "A race track, a golf course, a reserve, a park: on the real map, ready to play", true, 24)
 	_button("Play with friends", show_page.bind("multiplayer"), "Host a game, or join one", true, 24)
 	var gap := Control.new()
@@ -346,7 +357,7 @@ func _start_page() -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
 	_content.add_child(row)
-	for entry in [["Settings", show_page.bind("settings")], ["Quit", func(): get_tree().quit()]]:
+	for entry in [["Settings", show_page.bind("settings")],["Quit", func(): game.quit_game() if game else get_tree().quit()]]:
 		var small := Button.new()
 		small.text = "   %s   " % entry[0]
 		small.add_theme_font_size_override("font_size", 17)
@@ -406,6 +417,16 @@ var events_text := ""
 
 # Play an event: every race track, golf course, reserve and park on your maps (the world makes a game at each),
 # nearest where you last were first; Go: there, at its start
+# The demo areas that ship with the game: pick one
+func _demos_page() -> void:
+	_subtitle.text = "Try a demo: ready now, nothing to download"
+	var about := {"us_hawaii": "Oahu, Hawaii: Honolulu, its airport, the mountains and the H-3's tunnels. Drive, walk or fly",
+		"monaco": "Monte Carlo, Monaco: steep streets and the tunnels under the town, the Grand Prix circuit"}
+	for demo in GameSettings.demo_areas():
+		_button(demo["name"], _drive.bind(float(demo["lat"]), float(demo["lon"]), demo["name"]), about.get(demo["stem"], "Ready now"), true, 26)
+	_back()
+
+
 func _events_page() -> void:
 	_subtitle.text = "Play an event: on the real map, ready to play"
 	var tabs := HBoxContainer.new()
@@ -537,7 +558,7 @@ func _search_and_drive(text: String) -> void:
 		print("Geodrive: found %s: %s (%.5f, %.5f)" % [text, first.get("display_name", ""), lat, lon])
 		_drive(lat, lon, str(first.get("display_name", text)).get_slice(",", 0)))
 	var url := "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=" + text.uri_encode()
-	request.request(url, ["User-Agent: Open-Planet/0.1 (development build)"])
+	request.request(url, ["User-Agent: Open-Planet/0.2 (https://github.com/inlighten420/open-planet)"])
 
 
 func _drive(lat: float, lon: float, place_name: String) -> void:
@@ -692,9 +713,122 @@ func _graphics_settings() -> void:
 	_note("Memory shows the game's RAM and the graphics card's memory in use.")
 
 
+const CONTROL_KINDS := ["Keyboard and mouse", "Steering wheel"]
+
+# Settings, Controls: which controls to show (a gamepad one is to come)
 func _control_settings() -> void:
+	var kinds := HBoxContainer.new()
+	kinds.add_theme_constant_override("separation", 4)
+	for i in CONTROL_KINDS.size():
+		var kind := Button.new()
+		kind.text = CONTROL_KINDS[i]
+		kind.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		kind.add_theme_font_override("font", _bold)
+		kind.add_theme_font_size_override("font_size", 17)
+		if i == controls_kind:
+			kind.add_theme_color_override("font_color", HEADING)
+			kind.add_theme_color_override("font_focus_color", HEADING)
+			kind.add_theme_color_override("font_hover_color", HEADING)
+		kind.pressed.connect(func():
+			controls_kind = i
+			show_page("settings"))
+		kinds.add_child(kind)
+	_content.add_child(kinds)
+	if controls_kind == 1:
+		_wheel_settings()
+		_wheel_buttons()
+	else:
+		_keyboard_settings()
+		_camera_settings()
+
+
+var _capture := ""	# (the action being given a key: Press a key...; "" when none)
+var _capture_slot := 0
+var _bind_buttons := {}	# ("action:slot" -> its button)
+
+# One reassignable action: what it does, its two keys (click one, then press the new key or mouse button) and Reset
+func _binding_row(entry: Array) -> void:
+	var action: String = entry[0]
+	var row := HBoxContainer.new()
+	var what_label := _text(entry[1], 17, Color(0.92, 0.93, 0.95), false)
+	what_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	what_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	row.add_child(what_label)
+	for slot in 2:
+		var button := Button.new()
+		button.custom_minimum_size = Vector2(120, 0)
+		button.add_theme_font_override("font", _bold)
+		button.add_theme_font_size_override("font_size", 16)
+		button.text = Controls.code_name(Controls.slots(action)[slot])
+		button.pressed.connect(func():
+			_end_capture()
+			_capture = action
+			_capture_slot = slot
+			button.text = "Press a key...")
+		_bind_buttons["%s:%d" % [action, slot]] = button
+		row.add_child(button)
+	var reset := Button.new()
+	reset.text = " Reset "
+	reset.add_theme_font_size_override("font_size", 15)
+	reset.pressed.connect(func():
+		_end_capture()
+		Controls.reset(action)
+		_show_bindings(action))
+	row.add_child(reset)
+	_content.add_child(row)
+
+
+func _show_bindings(action: String) -> void:
+	for slot in 2:
+		var button: Button = _bind_buttons.get("%s:%d" % [action, slot])
+		if is_instance_valid(button):
+			button.text = Controls.code_name(Controls.slots(action)[slot])
+
+
+func _end_capture() -> void:
+	if _capture != "":
+		var action := _capture
+		_capture = ""
+		_show_bindings(action)
+
+
+# While a key is being chosen: the next key or mouse button is it (Esc: none, so a slot can be emptied; clicking
+# anywhere else cancels, clicking the same slot again chooses the left button)
+func _input(event: InputEvent) -> void:
+	if _capture == "" or not visible:
+		return
+	var code := 0
+	if event is InputEventKey and event.pressed and not event.echo:
+		code = KEY_NONE if event.keycode == KEY_ESCAPE else Controls.code_of(event)
+	elif event is InputEventMouseButton and event.pressed:
+		var own: Button = _bind_buttons.get("%s:%d" % [_capture, _capture_slot])
+		if event.button_index == MOUSE_BUTTON_LEFT and not (is_instance_valid(own) and own.get_global_rect().has_point(event.position)):
+			_end_capture()
+			return
+		code = Controls.code_of(event)
+	else:
+		return
+	get_viewport().set_input_as_handled()
+	Controls.set_slot(_capture, _capture_slot, code)
+	_end_capture()
+
+
+func _keyboard_settings() -> void:
 	var s := settings
-	_heading("Keyboard and gamepad")
+	_end_capture()
+	_bind_buttons.clear()
+	_note("Click a key, then press the new key or mouse button. Esc clears it. Each action has two keys. Keys are by place on the keyboard, so WASD is the same four keys on any layout (the buttons show what is printed on yours).")
+	var group := ""
+	for entry in Controls.ACTIONS:
+		if entry[2] != group:
+			group = entry[2]
+			_heading(group)
+		_binding_row(entry)
+	_button("Reset all keys to the defaults", func():
+		Controls.reset_all()
+		show_page("settings"))
+	_note("Not reassignable: Esc (menu), Tab and Esc close the phone, Esc closes the map and menus, F1 (the game here), F3 (debug info), the builder's number keys, and the mouse for looking around.")
+	_heading("Keyboard steering")
 	_stepper("Steering speed", func(d: int):
 		s.steer_speed = clampi(s.steer_speed + d, 1, 10)
 		s.save_quality("KeyboardSteerSpeed", s.steer_speed),
@@ -710,6 +844,12 @@ func _control_settings() -> void:
 		s.save_godot("TCLevel", s.tc_level),
 		func(): return "Off" if s.tc_level == 0 else "%d%s" % [s.tc_level, " (normal)" if s.tc_level == 3 else ""])
 	_note("How much the ABS lets the brakes lock and the traction control lets the driven wheels spin: 0 is off (all yours), higher steps in sooner.")
+
+
+func _wheel_settings() -> void:
+	var s := settings
+	if wheel == null or not wheel.is_wheel_connected():
+		_note("No steering wheel connected: plug it in and open this page again to set the pedals and buttons.")
 	_heading("Steering wheel")
 	_stepper("Wheel force", func(d: int):
 		s.wheel_gain = clampf(roundf(s.wheel_gain * 20.0 + d) / 20.0, 0.05, 1.0)
@@ -779,7 +919,10 @@ func _control_settings() -> void:
 		func(): return "Pedal" if s.clutch_pedal else "Automatic")
 	_note("With the clutch pedal, let it out gently to pull away; drop it with too few revs and the engine stalls. Push the clutch in to restart. Gear changes don't need the clutch.")
 
-	# the camera: views, the cockpit's field of view, the driver's seat, and the wheel's own buttons for looking round
+
+func _camera_settings() -> void:
+	var s := settings
+	# the camera: views, the cockpit's field of view and the driver's seat
 	_heading("Camera")
 	_note("C changes view: behind the car, the driver's seat with the steering wheel, the driver's seat without it (when your own wheel is in front of you), and the bonnet. Z / X look left and right, V looks back, the mouse looks around.")
 	_stepper("Your height", func(d: int):
@@ -804,7 +947,11 @@ func _control_settings() -> void:
 					return "in a car"
 				var seat: Vector2 = game.get_seat()
 				return "%+.0f cm" % seat[axis])
-	_note("The seat moves where your eyes are in the two driver's seat views, for this car. It can also be moved with the wheel's buttons below.")
+	_note("The seat moves where your eyes are in the two driver's seat views, for this car. A steering wheel's buttons can move it too (Controls, Steering wheel).")
+
+
+func _wheel_buttons() -> void:
+	var connected: bool = wheel != null and wheel.is_wheel_connected()
 	_heading("Wheel buttons for the camera and seat")
 	_control_values.clear()
 	for control in ClassDB.class_call_static("GeodriveWheel", "control_names"):
@@ -813,8 +960,6 @@ func _control_settings() -> void:
 	_control_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_content.add_child(_control_status)
 	_note("Click Set, then push the stick that way or press the button. Looking goes back to the road when you let go; looking back snaps round and back.")
-	if not connected:
-		_note("No steering wheel connected: plug it in and open this page again to set the pedals and buttons.")
 
 
 func _pedal_text(pedal: String) -> String:
@@ -914,6 +1059,26 @@ func _game_settings() -> void:
 		s.save_godot("bHUD", s.hud_shown),
 		func(): return "Shown" if s.hud_shown else "Hidden")
 	_note("H hides or shows all the on-screen text. Your car: the phone (Tab), Cars.")
+	_heading("Something wrong?")
+	_button("Reload the world here", func():
+		if game:
+			game.reload_world_here()
+		close(),
+		"Builds the world round you again, where you are (F5 does it too): if it lags after flying fast for a long time, or something looks wrong", game != null)
+	var recording: bool = game != null and game.rec_on
+	_button("Stop the recording and save it" if recording else "Start a recording (to show what goes wrong)", func():
+		if game:
+			game.toggle_recording()
+		close(),
+		"Everything that happens is written down: your keys and what the game did with each, where the car is, which screen is up (F4 starts and stops it too)", game != null)
+	_text_action("What went wrong? (a few words)", "", "Report a bug", func(note: String):
+		var path: String = game.make_bug_report(note) if game else ""
+		if path != "" and game:
+			game.note_made("report", path, note)
+			_subtitle.text = SendToUs.send(game.last_made)	# (straight to the bug report form on GitHub, the zip's folder beside it)
+		else:
+			_subtitle.text = "The report couldn't be saved")
+	_note("Saves a zip (in Documents, Open-Planet, Bug reports) with the game's log, your settings, your controllers and what the game was doing, and opens its folder. Send the zip to the developer.")
 	_heading("Roads")
 	_stepper("Road style", func(_d: int):
 		s.follow_land = not s.follow_land

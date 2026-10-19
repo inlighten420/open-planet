@@ -109,6 +109,10 @@ namespace geotile
 		{
 			return FineGrid::Utm32;	// (Germany, and its neighbours in the same zone)
 		}
+		if (Lat > 43.4 && Lat < 44.2 && Lon > 6.5 && Lon < 7.8)
+		{
+			return FineGrid::Utm32;	// (the Riviera round Monaco: IGN's 1 m heights, asked for in the same grid; Tools/trackpack/ign_fetch.py)
+		}
 		return FineGrid::None;
 	}
 

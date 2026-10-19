@@ -2,8 +2,8 @@
 	"name": "United States",
 	"drive": "right",
 	"mph": true,
-	"style": "europe",
-	"about": "Limits are set by each state; these are typical (25 mph residential, 45 mph arterials, 55 mph rural highways, 65-70 mph interstates). Yellow centre lines aren't drawn yet: the lines are white.",
+	"style": "us",
+	"about": "Limits are set by each state; these are typical (25 mph residential, 45 mph arterials, 55 mph rural highways, 65-70 mph interstates). Lines as the MUTCD has them: yellow centre lines, white edges, a one-way road's left edge yellow.",
 	"speed_kmh": { "motorway": 105, "motorway_link": 72, "trunk": 89, "trunk_link": 56, "primary": 72, "secondary": 72, "tertiary": 56, "unclassified": 56, "residential": 40, "living_street": 24, "service": 24 },
 	"sections": { "motorway": [2, 3.66, 3.05, 1.2], "trunk": [2, 3.66, 2.4, 0.6], "primary": [2, 3.66, 1.2], "secondary": [2, 3.35, 0.6], "residential": [2, 3.05, 0.0] }
 }

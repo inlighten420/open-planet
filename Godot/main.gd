@@ -25,6 +25,7 @@ extends Node3D
 
 const WALKER := preload("res://walker.gd")	# (loaded by path: on foot)
 const PHONE := preload("res://phone.gd")	# (the phone: Tab)
+const ROAD_EDITOR := preload("res://road_editor.gd")	# (F2: the road editor, "fix the world")
 const GAME_GEN := preload("res://game_gen.gd")	# (games made by the world, as its roads are)
 const GOLF := preload("res://golf.gd")	# (golf on the real courses)
 const AVIATION := preload("res://aviation.gd")	# (flying: airports, runways, the aircraft)
@@ -82,6 +83,7 @@ var camera: CarCamera
 var hud: Hud
 var menu: GameMenu
 var phone: CanvasLayer	# (Tab: the map, your cars, games, building, friends, settings)
+var road_editor: Node3D	# (F2: the roads round the free camera as handles to move, and what you changed copied to send us)
 var game_gen: Node	# (the world's own games: game_gen.gd)
 var golf: Node	# (a round of golf: golf.gd)
 var golf_test := false	# --golftest (at Steenberg: -34.068, 18.427): the clubs' carries, then three holes played by a robot golfer
@@ -125,6 +127,13 @@ var flip_timer := 0.0
 var flip_count := 0
 var ride: Array = []	# the last 6 s: time, vertical speed, position, speed (for B)
 var last_position := Vector3.ZERO
+var rec_on := false	# a debug recording is going (F4, or Settings > Game): what happens is written down with its time
+var rec_lines := PackedStringArray()
+var rec_start := 0.0
+var rec_next := 0.0
+var rec_waiting := ""
+var rec_track := 0.0
+var wheel_let_go := false	# (drive keys are held: the wheel has let go of the car, see _physics_process)
 var waiting := ""	# "start" (a new drive), "area" (a new area round a far place), "hop" (a far place in the built area)
 var came_from := PackedFloat64Array()	# where the car was when a new area started (lat, lon)
 var going_back := false
@@ -208,6 +217,15 @@ var high_view := false	# --high (pictures): the free camera 1.2 km up, looking o
 var race_pic := false	# --racepic (pictures): a second car beside yours, a length ahead, both held on the road; the camera low at the front quarter
 var _rival: RigidBody3D
 var clean_pic := false	# --clean (pictures): no numbers on screen (frame time, memory) and no key hints, for showing the game off
+var cam_at := PackedFloat64Array()	# --camat=lat,lon,height,yaw,pitch (pictures): the free camera at that spot, that many metres above the sea (inside a tunnel, say)
+var truth_test := false	# --truth (with --dumproads): the roads solved as if there were no LiDAR, to measure against it (Tools/road_levels.py)
+var roads_only := false	# --roadsonly: only the roads drawn (no ground, buildings, tunnels, plants, water): to see their levels
+var last_made := {}	# (F6 sends it: the last picture, recording, bug report or road edit, {kind, path, text, lat, lon})
+var send_test := false	# --sendtest: a picture and a road edit, and the GitHub links F6 would open for them (printed, not opened)
+var reload_test := false	# --reloadtest: "Reload the world here" pressed once the area is in, then whether it came back
+var _reload_pressed := false
+var road_edit_test := false	# --roadedit (with --camat, pictures): the road editor on there, the point nearest the middle of the view moved, the edits copied
+var dump_roads_path := ""	# --dumproads=<file>: every road of the area, as solved, to a JSON file once it is in, then quit (Tools/road_levels.py)
 var look := Vector3(1200.0, -8.0, -60.0)	# --look=up,pitch,yaw (pictures): the free camera this high above the car, this way (degrees)
 var f_step := 0
 var f_start := Vector3.ZERO
@@ -218,8 +236,9 @@ var change_view_was_down := false
 
 
 func _ready() -> void:
+	print("Geodrive: Open-Planet %s" % GameSettings.VERSION)
 	# the game's name players see (the project keeps "Geodrive": its saves are kept under that name)
-	get_window().title = "Open-Planet"
+	get_window().title = "Open-Planet " + GameSettings.VERSION
 	var lat := -33.9375
 	var lon := 18.44
 	var live := ClassDB.class_exists("GeodriveWorld")
@@ -330,6 +349,20 @@ func _ready() -> void:
 			cruise_test = true
 		elif arg == "--clean":
 			clean_pic = true
+		elif arg.begins_with("--camat="):
+			cam_at = PackedFloat64Array(Array(arg.substr(8).split(",")).map(func(v): return float(v)))
+		elif arg == "--truth":
+			truth_test = true
+		elif arg == "--roadsonly":
+			roads_only = true
+		elif arg == "--roadedit":
+			road_edit_test = true
+		elif arg == "--reloadtest":
+			reload_test = true
+		elif arg == "--sendtest":
+			send_test = true
+		elif arg.begins_with("--dumproads="):
+			dump_roads_path = arg.substr(12)
 		elif arg == "--racepic":
 			race_pic = true
 		elif arg == "--high":
@@ -433,6 +466,8 @@ func _ready() -> void:
 	phone = PHONE.new()
 	phone.main = self
 	add_child(phone)
+	road_editor = ROAD_EDITOR.new()
+	add_child(road_editor)
 	menu.drive_requested.connect(_drive_to)
 	REGION_FETCH.finish_deletes()	# (places deleted while the game had them open)
 	region_fetch = REGION_FETCH.new()
@@ -464,7 +499,7 @@ func _ready() -> void:
 	net.status_changed.connect(func(text: String): if text != "": hud.set_status(text, 10.0))
 	menu.world_map_requested.connect(open_world_map)
 	world_map.travel_requested.connect(_travel_from_map)
-	world_map.download_requested.connect(func(lat: float, lon: float, place_name: String): region_fetch.fetch(lat, lon, place_name))
+	world_map.download_requested.connect(func(lat: float, lon: float, place_name: String, km: float, play: bool): region_fetch.fetch(lat, lon, place_name, km, play))
 	world_map.delete_requested.connect(func(stem: String): region_fetch.delete_place(stem))
 	world_map.closed.connect(_world_map_closed)
 	if live:
@@ -494,6 +529,7 @@ func _ready() -> void:
 		world.follow_land = settings.follow_land
 		world.kerbs = settings.kerbs
 		world.scan_roads = settings.scan_roads or scan_override
+		world.set_truth(truth_test)
 		world.building_distance = settings.building_metres()
 		world.verbose = verbose or testing
 		# (the roads painted into the ground far off: the ground shader reads these, so they're there before it's made)
@@ -662,6 +698,13 @@ func _update_waiting() -> void:
 		var spawn: Dictionary = world.get_spawn()
 		var at: Vector3 = spawn["position"]
 		var heading: Vector3 = (spawn["heading"] as Vector3).normalized()
+		# where you asked for: the nearest road to that very spot (within 120 m), not the main road Core would pick near it, so
+		# Monte Carlo starts at the casino and a street you searched for starts on it
+		var wanted: Dictionary = world.nearest_road(world.from_lat_lon(hold_lat, hold_lon), 120.0)
+		if wanted.get("found", false):
+			at = wanted["position"]
+			heading = (wanted["direction"] as Vector3).normalized()
+			spawn["road"] = wanted.get("name", spawn["road"])
 		camera.position = at - heading * 14.0 + Vector3.UP * 4.0
 		camera.rotation = Vector3(-0.15, atan2(-heading.x, -heading.z), 0.0)
 		title += " (start: %s)" % spawn["road"]
@@ -752,7 +795,7 @@ func _make_car(at: Transform3D) -> void:
 func _make_wheel() -> void:
 	# (never in a test run but the wheel's own: force feedback takes the wheel for itself, and a test started while the
 	# game is being played had taken it from the game)
-	if wheel == null and ClassDB.class_exists("GeodriveWheel") and (not testing or wheel_test):
+	if wheel == null and ClassDB.class_exists("GeodriveWheel") and (not testing or wheel_test or r_test):
 		wheel = ClassDB.instantiate("GeodriveWheel")
 		add_child(wheel)
 		if wheel.load_settings(UnrealSettings.path()):
@@ -879,6 +922,20 @@ func _in_uk() -> bool:
 
 # The menu's Drive (an area, a search): a new area round the place (the car waits for it, or is made once it's in);
 # with a car already in a built area that has the place, just a teleport there (as the Unreal game's geo.Go)
+# Settings > Game > Something wrong?: the world round you built again from scratch, where you are (after flying fast for
+# long, when the ground ahead lags behind, or anything looks wrong that a fresh build might put right)
+func reload_world_here() -> void:
+	if world == null or not world.is_ready() or waiting != "":
+		return
+	var eye: Node3D = walker if walker else (car if car and not camera.free else get_viewport().get_camera_3d())
+	if eye == null:
+		return
+	var at: PackedFloat64Array = world.to_lat_lon(eye.global_position)
+	rec("reload the world here: %.6f, %.6f" % [at[0], at[1]])
+	_stop_flying()
+	_start_area(at[0], at[1], _area_name())
+
+
 func _drive_to(lat: float, lon: float, place_name: String) -> void:
 	if world == null or waiting != "":
 		return
@@ -966,6 +1023,7 @@ func _apply_settings(window_too: bool = true) -> void:
 		world.follow_land = settings.follow_land
 		world.kerbs = settings.kerbs
 		world.scan_roads = settings.scan_roads or scan_override
+		world.set_truth(truth_test)
 	if car:
 		car.abs_level = settings.abs_level
 		car.tc_level = settings.tc_level
@@ -1253,15 +1311,21 @@ func _wheel_controls(delta: float) -> void:
 		set_seat(get_seat())
 	var change_view: bool = held.call("ChangeView") > 0.0
 	if change_view and not change_view_was_down:
-		_key(KEY_C)
+		_do(["view"])
 	change_view_was_down = change_view
 
 
 # --- keys ---
 
 func _unhandled_input(event: InputEvent) -> void:
+	if rec_on and ((event is InputEventKey and event.pressed and not event.echo) or (event is InputEventMouseButton and event.pressed)):
+		var blocked: bool = menu.is_open() or phone.is_open() or loading.is_showing() or world_map.is_open()
+		rec("input %s -> actions %s%s" % [Controls.code_name(Controls.code_of(event)), Controls.actions_for(Controls.code_of(event)),
+			"  (IGNORED: a menu, the phone, the map or the loading screen is up)" if blocked else ""])
 	if menu.is_open() or phone.is_open() or loading.is_showing() or world_map.is_open() or (builder and builder.menu_open()) or (aviation and aviation.chooser_open()) or (hunt and hunt.chooser_open()):
 		return
+	if road_editor.active and road_editor.handle(event):
+		return	# (the road editor's: picking and dragging points, its keys)
 	if event is InputEventMouseMotion:
 		camera.mouse_moved(event.relative)
 	elif event is InputEventMouseButton and event.pressed and camera.map:
@@ -1274,8 +1338,10 @@ func _unhandled_input(event: InputEvent) -> void:
 				open_world_map()
 			else:
 				camera.zoom_map(1)
+	elif event is InputEventMouseButton and event.pressed and not event.double_click:
+		_key(Controls.code_of(event))	# (a mouse button set to an action, besides the weapon's own)
 	elif event is InputEventKey and event.pressed and not event.echo:
-		_key(event.keycode)
+		_key(Controls.code_of(event))
 	elif event is InputEventJoypadButton and event.pressed and walker and event.button_index == JOY_BUTTON_BACK and event.device == WALKER.gamepad():
 		phone.open()	# (on foot, a gamepad's Back: the phone; driving, it puts the car upright)
 	elif event is InputEventJoypadButton and event.pressed and aviation and aviation.flying:
@@ -1301,130 +1367,241 @@ func _unhandled_input(event: InputEvent) -> void:
 
 # The keys that do something now, for the HUD's bottom line: so a newcomer finds building, the phone and the map
 func _key_hints() -> String:
+	if rec_on:
+		return "RECORDING: %s to stop and save" % Controls.text("record")
 	if not world.is_ready() or loading.is_showing() or ((high_view or race_pic or clean_pic) and shot_path != ""):
 		return ""	# (not in a picture of the view)
 	if camera.map:
-		return "Map data (c) OpenStreetMap contributors    M close"	# (a map: its credit on it, as the licence asks)
+		return "Map data (c) OpenStreetMap contributors    %s close" % Controls.text("map")	# (a map: its credit on it, as the licence asks)
+	if road_editor.active:
+		return ""	# (the editor's own panel says its keys)
+	# (always at the end: the phone, a frozen or wrong world built again, and sending us what you made)
+	var always := "%s phone    %s reload world    %s send to us    Esc menu" % [Controls.text("phone"), Controls.text("reload_world"), Controls.text("send")]
 	if camera.free:
-		return "F back    Esc menu"
+		return "%s teleport here    %s back    %s road editor    %s" % [Controls.text("free_cam"), Controls.text("free_cam_cancel"), Controls.text("road_edit"), always]
 	if aviation and aviation.flying:
-		return "M map    F free camera    Esc menu"
+		return "%s map    %s free camera    %s" % [Controls.text("map"), Controls.text("free_cam"), always]
 	if walker:
-		return "B build    E use    Tab phone    M map    Enter get in    V park car here    Esc menu"
-	return "Enter get out    E / Q gears    C view    Tab phone    M map    Esc menu"
+		return "%s build    %s use    %s map    %s get in    %s park car here    %s" % [Controls.text("build"), Controls.text("use"),
+			Controls.text("map"), Controls.text("enter"), Controls.text("park_car"), always]
+	return "%s get out    %s / %s gears    %s view    %s map    %s" % [Controls.text("enter"), Controls.text("gear_up"),
+		Controls.text("gear_down"), Controls.text("view"), Controls.text("map"), always]
 
 
-func _key(key: Key) -> void:
-	match key:
-		KEY_ESCAPE:
-			open_menu()
-		KEY_TAB:
-			if car and waiting == "" and not loading.is_showing():
-				phone.open()
-		KEY_H:
-			settings.hud_shown = not settings.hud_shown	# (saved, as the setting is)
-			settings.save_godot("bHUD", settings.hud_shown)
-			hud.set_shown(settings.hud_shown)
-		KEY_F1:
-			if golf and golf.active:
-				golf.stop()
-			elif hunt:
-				hunt.toggle_game()	# (the game here on or off: tickets offered here, or the one you're playing stopped)
-		KEY_F12:
-			_screenshot()
-		KEY_F3:
-			settings.debug_info = not settings.debug_info
-			settings.save_godot("bDebugInfo", settings.debug_info)
-			hud.set_debug(settings.debug_info)
-		KEY_ENTER, KEY_KP_ENTER:
-			toggle_walk()
-		KEY_F:
-			if aviation and aviation.flying:
-				# flying: the free camera flies off and comes back to the aircraft (it flies on meanwhile)
-				if camera.free:
-					camera.stop_free()
-				else:
-					camera.start_free()
-			elif walker:
-				# on foot: the free camera flies off and comes back to them (they wait where they are)
-				if camera.free:
-					camera.stop_free()
-					walker.set_physics_process(true)
-				else:
-					camera.start_free()
-					walker.set_physics_process(false)
-			elif car == null:
-				pass	# (no car to drop: the free camera stays)
-			elif waiting != "":
-				hud.set_status("Wait a moment: the car is being put down", 2.0)
-			elif camera.free:
-				# back to the car, where it waited (not onto a road: it may be off one on purpose, out on a farm's
-				# tracks; going somewhere far is the menu's Go somewhere)
-				_leave_free_camera()
-			else:
-				camera.start_free()
-				Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
-				if car:
-					# the car waits where it is, held still, as in the Unreal game: flying off, the ground under it streams
-					# away, and it would drop through and be put back on its road, pulling the world back with it
-					car.freeze = true
+func _key(key: int) -> void:
+	_do(Controls.actions_for(key), key)
+
+
+# What a key does, by the actions it's set to (Settings > Controls); Esc, F1 and F3 are always the same. A wheel's or
+# gamepad's button asks for an action by name
+func _do(actions: Array, key: int = 0) -> void:
+	if key == KEY_ESCAPE:
+		open_menu()
+		return
+	if key == KEY_F1:
+		if golf and golf.active:
+			golf.stop()
+		elif hunt:
+			hunt.toggle_game()	# (the game here on or off: tickets offered here, or the one you're playing stopped)
+		return
+	if key == KEY_F3:
+		settings.debug_info = not settings.debug_info
+		settings.save_godot("bDebugInfo", settings.debug_info)
+		hud.set_debug(settings.debug_info)
+		return
+	if actions.has("record"):
+		toggle_recording()
+		return
+	if actions.has("phone"):
+		if car and waiting == "" and not loading.is_showing():
+			phone.open()
+	if actions.has("hide_hud"):
+		settings.hud_shown = not settings.hud_shown	# (saved, as the setting is)
+		settings.save_godot("bHUD", settings.hud_shown)
+		hud.set_shown(settings.hud_shown)
+	if actions.has("screenshot"):
+		_screenshot()
+	if actions.has("road_edit"):
+		_toggle_road_editor()
+		return
+	if actions.has("reload_world"):
+		reload_world_here()
+		return
+	if actions.has("send"):
+		rec("send to us: %s" % last_made.get("kind", "nothing"))
+		hud.set_status(SendToUs.send(last_made), 10.0)
+		return
+	if road_editor.active and (actions.has("free_cam") or actions.has("free_cam_cancel") or actions.has("recover")):
+		return	# (F2 first: leaving the editor, then the free camera's keys as ever)
+	if actions.has("enter") or key == KEY_KP_ENTER:
+		toggle_walk()
+	if actions.has("free_cam"):
+		_free_camera_key(true)
+	elif actions.has("free_cam_cancel") and camera.free:
+		_free_camera_key(false)
+	if actions.has("recover") and camera.free and car and not (aviation and aviation.flying):
+		rec("recover (R) in the free camera: same as F again")
+		_free_camera_key(true)	# (R in the free camera: you and the car there, on the nearest road)
 	if camera.free or car == null:
 		return
 	if aviation and aviation.flying:
-		if key == KEY_M:
+		if actions.has("map"):
 			camera.toggle_map()
 		else:
-			aviation.key(key)
+			aviation.act(actions)
 		return
 	if walker:
-		if key == KEY_M:
+		if actions.has("map"):
 			camera.toggle_map()
-		elif key == KEY_B and builder:
+		elif actions.has("build") and builder:
 			builder.toggle()
-		elif key == KEY_E and hunt and not hunt.kiosk_near(walker.global_position).is_empty():
+		elif actions.has("use") and hunt and not hunt.kiosk_near(walker.global_position).is_empty():
 			hunt.open_tickets(hunt.kiosk_near(walker.global_position))
-		elif key == KEY_E and aviation and not aviation.stand_near(walker.global_position).is_empty():
+		elif actions.has("use") and aviation and not aviation.stand_near(walker.global_position).is_empty():
 			aviation.open_chooser(aviation.stand_near(walker.global_position)["airport"])
-		elif key == KEY_E and builder:
+		elif actions.has("use") and builder:
 			builder.use()
-		elif key == KEY_V:
+		elif actions.has("park_car") or (actions.has("recover") and not (hunt and hunt.weapon and hunt.weapon.usable())):
 			park_car(car.body)
-		elif key == KEY_I and walker.global_position.distance_to(car.global_position) < 6.0:
+		elif actions.has("engine") and walker.global_position.distance_to(car.global_position) < 6.0:
 			_toggle_engine()	# (reaching in through the window)
-		elif key == KEY_C and not camera.map:
+		elif actions.has("view") and not camera.map:
 			camera.walker_behind = not camera.walker_behind
 			hud.set_status("Behind you" if camera.walker_behind else "Your eyes", 1.5)
 		return	# (the car's keys wait for its driver)
-	match key:
-		KEY_C:
-			if camera.map:
-				return	# (the map is the view: C after M)
-			camera.cycle_view()
-			UnrealSettings.set_value("Geodrive", "CameraView", camera.view)
-			hud.set_status(camera.view_name() + " view", 1.5)
-		KEY_M:
-			camera.toggle_map()
-		KEY_BACKSPACE:
-			reset_in_place()
-		KEY_L:
-			_toggle_diff_lock()
-		KEY_I:
-			_toggle_engine()
-		KEY_E:
-			car.shift_up()
-		KEY_Q:
-			car.shift_down()
-		KEY_G:
-			car.automatic = true
-			hud.set_status("Automatic gears", 1.5)
-		KEY_B:
-			report_spot()
+	if actions.has("view"):
+		if camera.map:
+			return	# (the map is the view: C after M)
+		camera.cycle_view()
+		UnrealSettings.set_value("Geodrive", "CameraView", camera.view)
+		hud.set_status(camera.view_name() + " view", 1.5)
+	if actions.has("map"):
+		camera.toggle_map()
+	if actions.has("recover"):
+		rec("recover (R): driving, so back_on_road()")
+		back_on_road()	# (the nearest road, facing the way you face)
+	if actions.has("reset_car"):
+		reset_in_place()
+	if actions.has("diff_lock"):
+		_toggle_diff_lock()
+	if actions.has("engine"):
+		_toggle_engine()
+	if actions.has("gear_up"):
+		car.shift_up()
+	if actions.has("gear_down"):
+		car.shift_down()
+	if actions.has("auto_gear"):
+		car.automatic = true
+		hud.set_status("Automatic gears", 1.5)
+	if actions.has("report_spot"):
+		report_spot()
+
+
+# The free camera slows while the world has jobs waiting (the ground, roads and buildings it is making ahead of it), and goes
+# back to full speed when it has caught up: flown flat out over a dense city (Hanoi) it was always ahead of the loading, and
+# the ground and buildings came in plain and late
+func _pace_free_camera() -> void:
+	if not camera.free or world == null:
+		camera.speed_scale = 1.0
+		return
+	var status: String = world.get_status()
+	var at := status.find("jobs ")
+	var queued := 0
+	if at >= 0:
+		var parts := status.substr(at + 5).get_slice(" ", 0).split("+")
+		for part in parts:
+			queued += part.to_int()
+	camera.speed_scale = clampf(1.0 - queued / 14.0, 0.2, 1.0)
+	if camera.speed_scale < 0.6:
+		hud.set_status("Waiting for the world to catch up...", 0.8)
+	rec("free camera pace: %d jobs queued, speed x%.2f" % [queued, camera.speed_scale])
+
+
+# F2: the road editor on (in the free camera, flown off from where you are) or off (the free camera stays)
+func _toggle_road_editor() -> void:
+	if road_editor.active:
+		rec("road editor off")
+		road_editor.stop()
+		return
+	if world == null or not world.is_ready() or loading.is_showing():
+		return
+	if not camera.free:
+		_free_camera_key(true)
+	if not camera.free:
+		return
+	rec("road editor on")
+	road_editor.world = world
+	road_editor.camera = camera
+	road_editor.made = note_made
+	road_editor.start()
+
+
+# F (and Backspace, in the free camera): flies the camera off, and while it's flying F again takes you there (the car on the
+# nearest road to it, or on foot on the ground there: find your house); Backspace comes back to where you were. Flying
+# an aircraft, F off and on is the camera only (it flies on meanwhile)
+func _free_camera_key(teleport_here: bool) -> void:
+	rec("free camera key: %s; free %s, flying %s, on foot %s, waiting '%s'" % ["F / teleport" if teleport_here else "back", camera.free,
+		aviation != null and aviation.flying, walker != null, waiting])
+	if aviation and aviation.flying:
+		if camera.free:
+			camera.stop_free()
+		else:
+			camera.start_free()
+	elif walker:
+		if camera.free:
+			if teleport_here:
+				_teleport_walker_to_camera()
+			else:
+				camera.stop_free()
+			walker.set_physics_process(true)
+		elif teleport_here:
+			camera.start_free()
+			walker.set_physics_process(false)
+	elif car == null:
+		pass	# (no car to drop: the free camera stays)
+	elif waiting != "":
+		hud.set_status("Wait a moment: the car is being put down", 2.0)
+	elif camera.free:
+		if teleport_here:
+			_teleport_car_to_camera()
+		else:
+			_leave_free_camera()	# (back to the car where it waited)
+	elif teleport_here:
+		camera.start_free()
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+		# the car waits where it is, held still, as in the Unreal game: flying off, the ground under it streams away, and it
+		# would drop through and be put back on its road, pulling the world back with it
+		car.freeze = true
+
+
+# The car on the nearest road to the free camera, facing the way the camera does (as the Unreal game's F twice)
+func _teleport_car_to_camera() -> void:
+	var target := camera.global_position
+	var facing := -camera.global_transform.basis.z
+	facing.y = 0.0
+	_leave_free_camera()
+	place_car(target, facing, "Here, on the nearest road")
+
+
+# On foot, to where the free camera is: standing on what's under it (a roof, a road or the ground)
+func _teleport_walker_to_camera() -> void:
+	var target := camera.global_position
+	camera.stop_free()
+	var ground: float = world.ground_height(target) if world else target.y
+	var top := target + Vector3.UP * 5.0
+	var ray := PhysicsRayQueryParameters3D.create(top, Vector3(target.x, ground - 50.0, target.z))
+	var hit := get_world_3d().direct_space_state.intersect_ray(ray)
+	var at: Vector3 = hit["position"] if hit else Vector3(target.x, ground, target.z)
+	walker.global_position = at + Vector3.UP * 0.1
+	walker.velocity = Vector3.ZERO
+	hud.set_status("Here", 2.0)
 
 
 # --- on foot ---
 
 # Enter: out of the car (stopped) on the driver's side, or, within 4 m of it, back in
 func toggle_walk() -> void:
+	rec("toggle_walk (Enter): on foot %s, free camera %s, waiting '%s'" % [walker != null, camera.free, waiting])
 	if car == null or camera.free or waiting != "":
 		return
 	if aviation and aviation.flying:
@@ -3231,6 +3408,8 @@ func _walk_test_step(delta: float) -> void:
 # way along it nearest Facing; then, if the ground and road there aren't solid yet, the car waits for them)
 func place_car(near: Vector3, facing: Vector3, message: String) -> void:
 	var road: Dictionary = world.nearest_road(near, 20000.0) if world else {}
+	rec("place_car: from %s, nearest road found %s%s" % [near, road.get("found", false),
+		(" at %.1f m, %s" % [near.distance_to(road["position"]), road.get("name", "")]) if road.get("found", false) else ""])
 	var at := near
 	var along := Vector3(facing.x, 0.0, facing.z)
 	if road.get("found", false):
@@ -3241,7 +3420,10 @@ func place_car(near: Vector3, facing: Vector3, message: String) -> void:
 		along = Vector3.FORWARD
 	_put_car(Transform3D(Basis.looking_at(along.normalized(), Vector3.UP), at + Vector3.UP * 0.6))
 	last_position = car.global_position
-	hud.set_status(message, 3.0)
+	if road.get("found", false):
+		hud.set_status(message, 3.0)
+	else:
+		hud.set_status("No road found near here (the map around you may still be loading): the car's upright where it is", 5.0)
 	if world and not world.is_solid_at(at):
 		car.freeze = true
 		waiting = "settle"
@@ -3366,9 +3548,18 @@ func _mark_car() -> void:
 
 
 func _put_car(at: Transform3D) -> void:
+	rec("put_car: from %s to %s (on foot %s, frozen %s)" % [car.global_position, at.origin, walker != null, car.freeze])
+	rec_track = 3.0 if rec_on else 0.0	# (the car's position written every physics step for 3 s: does it stay where it was put?)
 	if walker:
 		_stop_walking()	# (the car moved somewhere: its driver goes with it)
 	knock_skip = 3	# (put down: the speed it loses isn't a knock)
+	# (a moving car's real place is the physics engine's: the node's own transform written alone was put back, as a recording
+	# of R off the road showed, the car staying where it was; a frozen one follows its node, which is why F twice worked. So the
+	# engine is told too)
+	var body := car.get_rid()
+	PhysicsServer3D.body_set_state(body, PhysicsServer3D.BODY_STATE_TRANSFORM, at)
+	PhysicsServer3D.body_set_state(body, PhysicsServer3D.BODY_STATE_LINEAR_VELOCITY, Vector3.ZERO)
+	PhysicsServer3D.body_set_state(body, PhysicsServer3D.BODY_STATE_ANGULAR_VELOCITY, Vector3.ZERO)
 	car.global_transform = at
 	car.linear_velocity = Vector3.ZERO
 	car.angular_velocity = Vector3.ZERO
@@ -3462,6 +3653,8 @@ func _keys_drive() -> bool:
 
 
 func _physics_process(delta: float) -> void:
+	if rec_on:
+		_rec_tick()
 	if switch_test >= 0.0 and aviation and (aviation.aircraft or switch_test > 0.0):
 		var was := switch_test
 		switch_test += delta
@@ -3517,9 +3710,18 @@ func _physics_process(delta: float) -> void:
 				get_tree().quit()
 		return
 	if wheel and wheel.is_wheel_connected() and not drive_test:
-		# the wheel and pedals drive; the handbrake stays on the keyboard
-		car.set_handbrake(float(Input.is_key_pressed(KEY_SPACE)))
-		return
+		# the wheel and pedals drive; the handbrake stays on the keyboard. Drive keys held take the car from the wheel
+		# (it is let go while they are down): a device that counts as a wheel but isn't one (a joystick, odd pedals)
+		# must not leave the keyboard dead
+		var held := _keys_drive() and (Controls.down("forward") or Controls.down("back") or Controls.down("left") or Controls.down("right"))
+		if held:
+			wheel.set_car(null)
+		elif wheel_let_go:
+			wheel.set_car(car)
+		wheel_let_go = held
+		if not held:
+			car.set_handbrake(float(Controls.down("jump")))
+			return
 	var throttle := 0.0
 	var brake := 0.0
 	var handbrake := 0.0
@@ -3568,12 +3770,23 @@ func _physics_process(delta: float) -> void:
 		steer_target = pilot.z
 		steer = steer_target
 	elif not camera.free and _keys_drive():
-		throttle = max(float(Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP)), Input.get_joy_axis(0, JOY_AXIS_TRIGGER_RIGHT))
-		brake = max(float(Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN)), Input.get_joy_axis(0, JOY_AXIS_TRIGGER_LEFT))
-		handbrake = float(Input.is_key_pressed(KEY_SPACE) or Input.is_joy_button_pressed(0, JOY_BUTTON_A))
-		steer_target = float(Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT)) - float(Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT))
-		var stick := Input.get_joy_axis(0, JOY_AXIS_LEFT_X)
-		if abs(stick) > 0.08:
+		# (keys are Controls' actions, by their place on the board; a pad's
+		# axes only count past a dead zone, and never over a key that is held: an odd device on pad 0 can rest off-centre)
+		var w := Controls.down("forward")
+		var s := Controls.down("back")
+		var d := Controls.down("right")
+		var a := Controls.down("left")
+		# (a pad's: only a known gamepad's, as walking and flying read it: a wheel, pedals or a stick the wheel's driver
+		# doesn't take could otherwise drive by itself, pedals resting at full on the trigger axes)
+		var pad := WALKER.gamepad()
+		var trig_r := Input.get_joy_axis(pad, JOY_AXIS_TRIGGER_RIGHT) if pad >= 0 else 0.0
+		var trig_l := Input.get_joy_axis(pad, JOY_AXIS_TRIGGER_LEFT) if pad >= 0 else 0.0
+		throttle = 1.0 if w else (trig_r if trig_r > 0.1 else 0.0)
+		brake = 1.0 if s else (trig_l if trig_l > 0.1 else 0.0)
+		handbrake = float(Controls.down("jump") or (pad >= 0 and Input.is_joy_button_pressed(pad, JOY_BUTTON_A)))
+		steer_target = float(d) - float(a)
+		var stick := Input.get_joy_axis(pad, JOY_AXIS_LEFT_X) if pad >= 0 else 0.0
+		if abs(stick) > 0.15 and not (a or d):
 			steer_target = stick
 
 	# keys turn the wheels at a steady rate, with less lock at speed (as in the Unreal game)
@@ -3702,6 +3915,7 @@ func _process(delta: float) -> void:
 		info_timer -= delta
 		if info_timer <= 0.0:
 			info_timer = 0.5
+			_pace_free_camera()
 			hud.set_hints(_key_hints())
 			hud.set_info(world.get_robot_status() if world.is_robot_driving() else world.get_traffic_status())
 		if waiting != "":
@@ -3771,14 +3985,14 @@ func _process(delta: float) -> void:
 		var gear: int = car.get_gear()
 		var debug := ""
 		if hud.debug:
-			debug = "\n".join([title, car.get_status(), car.get_debug(), (wheel.get_debug() if wheel else "wheel: none"),
+			debug = "\n".join([title, _where_am_i(), car.get_status(), car.get_debug(), (wheel.get_debug() if wheel else "wheel: none"),
 				world.get_status() if world else "", world.get_traffic_status() if world else "", "%.1f fps" % Engine.get_frames_per_second()])
 		hud.update(car.get_speed_kmh(), "R" if gear < 0 else ("N" if gear == 0 else str(gear)), street, trip_km, debug, mph)
 		hud.set_on_foot(walker != null or (aviation != null and aviation.flying))
 		hud.set_flight(aviation.instruments() if aviation and aviation.flying else "")
 		hud.set_car_flags(car.diff_lock, car.is_stalled() and car.engine_on)	# (switched off: not stalled)
 	elif hud.debug and world:
-		hud.update(0.0, "-", "", 0.0, title + "\n" + world.get_status())
+		hud.update(0.0, "-", "", 0.0, title + "\n" + _where_am_i() + "\n" + world.get_status())
 
 	# wheel test: what the wheel says after 3 s (no forces), then quit
 	if wheel_test and frame == 180:
@@ -3802,6 +4016,8 @@ func _process(delta: float) -> void:
 		camera.map_height = 2000.0
 		if shown_frames == 400:
 			get_tree().quit()
+	if r_test and car and shown_frames in [50, 250]:
+		toggle_recording()	# (the debug recording, over the whole test: started at 50, saved at 250)
 	if r_test and car and shown_frames in [100, 200, 260]:
 		# R off the road: the car put 60 m to the side, then R: it should be back on the nearest road
 		var road: Dictionary = world.nearest_road(car.global_position, 20000.0)
@@ -3812,7 +4028,12 @@ func _process(delta: float) -> void:
 			var aside := car.global_position + side * 60.0
 			_put_car(Transform3D(car.global_transform.basis, Vector3(aside.x, world.ground_height(aside) + 1.0, aside.z)))
 		elif shown_frames == 200:
-			back_on_road()	# (no key now: the speed test and the fell-through check use it)
+			# (a real key press through the game's own input handling, as the keyboard sends it)
+			var press := InputEventKey.new()
+			press.pressed = true
+			press.keycode = KEY_R
+			press.physical_keycode = KEY_R
+			_unhandled_input(press)
 		else:
 			get_tree().quit()
 	if reset_test and car and frame in [100, 101, 110, 140]:
@@ -3939,10 +4160,45 @@ func _process(delta: float) -> void:
 			camera.look_at(house.global_transform * Vector3(3.0, 2.5, -3.0), Vector3.UP)
 			camera._free_pitch = camera.rotation.x
 			camera._free_yaw = camera.rotation.y
+	if roads_only:
+		# everything of the world but the roads and their lines (the layers as PROFILE_PARTS has them)
+		camera.hidden_layers = (1 << 10) | (1 << 13) | (1 << 14) | (1 << 15) | (1 << 16) | (1 << 17) | (1 << 18)
+	if dump_roads_path != "" and world and world.is_ready() and not loading.is_showing():
+		print("Geodrive: roads written to %s: %s" % [dump_roads_path, world.dump_roads(dump_roads_path)])
+		dump_roads_path = ""
+		quit_game()
 	if clean_pic and hud.shown:
 		hud.set_shown(false)	# (a picture for showing off: nothing over the view)
 	if race_pic and car and shown_frames == 100:
 		_stage_race()
+	if cam_at.size() >= 3 and car and shown_frames == 100:
+		if shot_path != "":
+			hud.set_shown(false)
+		camera.start_free()
+		var spot: Vector3 = world.from_lat_lon(cam_at[0], cam_at[1])
+		spot.y += cam_at[2] - world.ground_height(spot)	# (metres above the sea, from the ground's height there)
+		camera.global_position = spot
+		camera._free_yaw = deg_to_rad(cam_at[3] if cam_at.size() > 3 else 0.0)
+		camera._free_pitch = deg_to_rad(cam_at[4] if cam_at.size() > 4 else 0.0)
+	if send_test and car and shown_frames == 120:
+		print("Geodrive: [SendTest] nothing yet: " + SendToUs.send({}, true))
+		note_made("picture", "C:/Users/someone/Pictures/Open-Planet/Open-Planet 2026-10-20 10-00-00.png", "")
+		print("Geodrive: [SendTest] picture: " + SendToUs.send(last_made, true))
+		note_made("edit", "", "Open-Planet road edits near 43.7, 7.4 (1 roads)...
+road 168 Tunnel Dsc Fontvieille (tertiary)...")
+		print("Geodrive: [SendTest] edit: " + SendToUs.send(last_made, true))
+		print("Geodrive: [SendTest] hints: " + _key_hints())
+		quit_game()
+	if reload_test and car and shown_frames == 150 and not _reload_pressed:
+		print("Geodrive: [ReloadTest] pressing Reload the world here")
+		_reload_pressed = true
+		reload_world_here()
+	if reload_test and _reload_pressed and shown_frames == 600:
+		print("Geodrive: [ReloadTest] after: world ready %s, car %s, waiting '%s'" % [world.is_ready(), car != null, waiting])
+		quit_game()
+	if road_edit_test and car and shown_frames == 130:
+		_toggle_road_editor()
+		road_editor.self_test()
 	if high_view and car and shown_frames == 100:
 		if shot_path != "":
 			hud.set_shown(false)	# (a picture of the view: the HUD not in it; not saved)
@@ -4453,6 +4709,19 @@ func _first_phone_button(node: Node, text: String) -> Node:
 	return null
 
 
+# Where you are, for the F3 numbers (and for telling someone where a problem is): the view's latitude and longitude, its height
+# above the sea and over the ground there, and which way it looks. The F12 picture's note carries the same
+func _where_am_i() -> String:
+	if world == null or not world.is_ready():
+		return "where: the world isn't in yet"
+	var eye: Camera3D = get_viewport().get_camera_3d()
+	if eye == null:
+		return "where: no view"
+	var at: PackedFloat64Array = world.to_lat_lon(eye.global_position)
+	return "where: lat %.6f, lon %.6f, %.1f m above the sea (%.1f m over the ground); looking %.0f degrees round" % [at[0], at[1], eye.global_position.y,
+		eye.global_position.y - world.ground_height(eye.global_position), fposmod(-rad_to_deg(eye.global_rotation.y), 360.0)]
+
+
 # F12: a picture of the game as it is now (H first for none of the HUD), into the Pictures folder's Open-Planet
 func _screenshot() -> void:
 	await RenderingServer.frame_post_draw
@@ -4460,7 +4729,186 @@ func _screenshot() -> void:
 	DirAccess.make_dir_recursive_absolute(folder)
 	var path := folder.path_join("Open-Planet %s.png" % Time.get_datetime_string_from_system().replace(":", "-").replace("T", " "))
 	get_viewport().get_texture().get_image().save_png(path)
-	hud.set_status("Picture saved, in Pictures, Open-Planet", 2.0)
+	# (and where it was taken, beside it: the camera's place and which way it looked, to find the spot again)
+	if world and world.is_ready():
+		var eye: Camera3D = get_viewport().get_camera_3d()
+		var at: PackedFloat64Array = world.to_lat_lon(eye.global_position)
+		var note := FileAccess.open(path.get_basename() + ".txt", FileAccess.WRITE)
+		if note:
+			note.store_line("lat %.6f, lon %.6f, %.1f m above the sea (ground there %.1f m); looking %.0f degrees round, %.0f up" % [at[0], at[1],
+				eye.global_position.y, world.ground_height(eye.global_position), fposmod(-rad_to_deg(eye.global_rotation.y), 360.0), rad_to_deg(eye.global_rotation.x)])
+			note.store_line("free camera: --lat=%.6f --lon=%.6f" % [at[0], at[1]])
+			# (the same view again, exactly: a picture of it from the command line)
+			note.store_line("this view: --lat=%.6f --lon=%.6f --camat=%.6f,%.6f,%.2f,%.1f,%.1f" % [at[0], at[1], at[0], at[1], eye.global_position.y,
+				rad_to_deg(eye.global_rotation.y), rad_to_deg(eye.global_rotation.x)])
+	note_made("picture", path, "")
+	hud.set_status("Picture saved, in Pictures, Open-Planet (%s sends it to us)" % Controls.text("send"), 3.0)
+
+
+# What was made last, for F6 to send: where it was made, and its file or text
+func note_made(kind: String, path: String, text: String) -> void:
+	last_made = {"kind": kind, "path": path, "text": text}
+	var eye: Node3D = walker if walker else (car if car and not camera.free else get_viewport().get_camera_3d())
+	if world and world.is_ready() and eye:
+		var at: PackedFloat64Array = world.to_lat_lon(eye.global_position)
+		last_made["lat"] = at[0]
+		last_made["lon"] = at[1]
+
+
+# Leaving the game. On a normal quit the world waits for every piece and chunk still being built before it lets go, and in a
+# dense city that is tens of seconds with the window sitting there: so what has to be put away is put away here (a download
+# stopped, a recording saved, a friend's game left), and the game ends at once. Settings and what's been built are saved as
+# they change, and a steering wheel lets its forces go when the game stops sending them
+func quit_game() -> void:
+	if testing:
+		get_tree().quit()
+		return
+	if rec_on:
+		toggle_recording()
+	if region_fetch:
+		region_fetch._kill_download()
+	if net and net.is_online():
+		net.leave()
+	_remember_spot()	# (where you were, for Continue: kept every 15 s, and now; settings and keys are saved as they change)
+	OS.kill(OS.get_process_id())
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		quit_game()
+
+
+# --- debug recording: begin, play, end, and everything between is written down (F4, or Settings > Game > Something wrong?) ---
+
+func rec(text: String) -> void:
+	if rec_on and rec_lines.size() < 400000:
+		rec_lines.append("%8.2f  %s" % [Time.get_ticks_msec() / 1000.0 - rec_start, text])
+
+
+func toggle_recording() -> void:
+	if not rec_on:
+		rec_on = true
+		rec_lines = PackedStringArray()
+		rec_start = Time.get_ticks_msec() / 1000.0
+		rec_next = 0.0
+		rec_waiting = ""
+		rec("recording started: %s, controls: forward %s, back %s, left %s, right %s, recover %s" % [Time.get_datetime_string_from_system(false, true),
+			Controls.text("forward"), Controls.text("back"), Controls.text("left"), Controls.text("right"), Controls.text("recover")])
+		for id in Input.get_connected_joypads():
+			rec("device %d: %s" % [id, Input.get_joy_name(id)])
+		rec("state " + _rec_state())
+		hud.set_status("Recording: do what goes wrong, then press %s again to stop and save" % Controls.text("record"), 5.0)
+		return
+	rec("recording stopped")
+	rec_on = false
+	var path := make_bug_report("Debug recording", "\n".join(rec_lines))
+	rec_lines = PackedStringArray()
+	if path != "":
+		note_made("recording", path, "")
+		hud.set_status("Recording saved: %s (%s sends it to us)" % [path.get_file(), Controls.text("send")], 8.0)
+		if not testing:
+			OS.shell_show_in_file_manager(path)
+		print("Geodrive: recording saved: ", path)
+	else:
+		hud.set_status("The recording couldn't be saved", 5.0)
+
+
+# What's going on, in one line: where the car is and what's near, what the player's holding, which screen is up
+func _rec_state() -> String:
+	var parts := PackedStringArray()
+	parts.append("fps %d" % Engine.get_frames_per_second())
+	if world and car:
+		var at: PackedFloat64Array = world.to_lat_lon(car.global_position)
+		var road: Dictionary = world.nearest_road(car.global_position, 300.0)
+		parts.append("car %.5f,%.5f up %.1f m, %.0f km/h, road %s" % [at[0], at[1], car.global_position.y, absf(car.get_speed_kmh()),
+			("%.0f m (%s)" % [car.global_position.distance_to(road["position"]), road.get("name", "")]) if road.get("found", false) else "none within 300 m"])
+	if camera:
+		parts.append("camera %s free %s map %s" % [camera.global_position.snappedf(1.0), camera.free, camera.map])
+	parts.append("foot %s fly %s menu %s phone %s mapscreen %s loading %s waiting '%s'" % [walker != null, aviation != null and aviation.flying, menu.is_open(),
+		phone.is_open(), world_map.is_open(), loading.is_showing(), waiting])
+	var held := PackedStringArray()
+	for id in ["forward", "back", "left", "right", "jump", "run", "recover"]:
+		if Controls.down(id):
+			held.append(id)
+	parts.append("held %s" % [held])
+	if world:
+		parts.append("world: %s | built boxes %d | %s" % [world.get_status(), world.get_built_boxes().size(), world.get_loading_status()])
+	return "  ".join(parts)
+
+
+# Twice a second while recording: the state, and any change of what the game is waiting for
+func _rec_tick() -> void:
+	var now := Time.get_ticks_msec() / 1000.0 - rec_start
+	if rec_track > 0.0 and car:
+		rec_track -= get_physics_process_delta_time()
+		rec("  car now %s (physics engine: %s), frozen %s, speed %.1f km/h" % [car.global_position,
+			PhysicsServer3D.body_get_state(car.get_rid(), PhysicsServer3D.BODY_STATE_TRANSFORM).origin, car.freeze, car.get_speed_kmh()])
+	if waiting != rec_waiting:
+		rec("waiting changed: '%s' -> '%s'" % [rec_waiting, waiting])
+		rec_waiting = waiting
+	if now >= rec_next:
+		rec_next = now + 0.5
+		rec("state " + _rec_state())
+
+
+# A bug report for the testers to send: a zip in Documents/Open-Planet/Bug reports with what they wrote, the PC, the
+# game's state (car, wheel, menu, where), every input device and its axes, the settings, the log and a picture.
+# Returns the zip's path ("" if it couldn't be made)
+func make_bug_report(note: String, recording: String = "") -> String:
+	var info := PackedStringArray()
+	info.append("Open-Planet %s bug report, %s" % [GameSettings.VERSION, Time.get_datetime_string_from_system(false, true)])
+	info.append("Built: %s" % Time.get_datetime_string_from_unix_time(FileAccess.get_modified_time(OS.get_executable_path())))
+	info.append("What went wrong: %s" % (note if note != "" else "(nothing written)"))
+	info.append("")
+	info.append("PC: %s %s, %s (%d threads), %d MB memory, %s (%s)" % [OS.get_name(), OS.get_version(), OS.get_processor_name(),
+		OS.get_processor_count(), OS.get_memory_info()["physical"] / 1048576, RenderingServer.get_video_adapter_name(), OS.get_video_adapter_driver_info()[1] if OS.get_video_adapter_driver_info().size() > 1 else "?"])
+	info.append("Window %s, %d fps, keyboard layout: %s" % [get_window().size, Engine.get_frames_per_second(), DisplayServer.keyboard_get_layout_name(DisplayServer.keyboard_get_current_layout())])
+	info.append("")
+	info.append("State: menu open %s, waiting '%s', free camera %s, map %s, on foot %s, flying %s, loading %s" % [menu.is_open(), waiting,
+		camera.free, camera.map, walker != null, aviation != null and aviation.flying, loading.is_showing()])
+	if car:
+		var here: PackedFloat64Array = world.to_lat_lon(car.global_position) if world else PackedFloat64Array([0.0, 0.0])
+		info.append("Car at %.5f, %.5f: %s" % [here[0], here[1], car.get_status()])
+		info.append(str(car.get_debug()))
+	else:
+		info.append("No car")
+	info.append("Wheel: %s (let go for keys: %s)" % [wheel.get_status() if wheel else "no wheel node", wheel_let_go])
+	info.append("Keys: forward [%s] held %s, back [%s] held %s, left [%s] held %s, right [%s] held %s" % [Controls.text("forward"), Controls.down("forward"),
+		Controls.text("back"), Controls.down("back"), Controls.text("left"), Controls.down("left"), Controls.text("right"), Controls.down("right")])
+	info.append("")
+	info.append("Input devices (the walking gamepad is %d):" % WALKER.gamepad())
+	for id in Input.get_connected_joypads():
+		var axes := PackedStringArray()
+		for axis in 8:
+			axes.append("%.2f" % Input.get_joy_axis(id, axis))
+		info.append("  %d: %s (known pad %s) axes %s" % [id, Input.get_joy_name(id), Input.is_joy_known(id), " ".join(axes)])
+	if Input.get_connected_joypads().is_empty():
+		info.append("  none")
+	var files := {"report.txt": "\n".join(info).to_utf8_buffer()}
+	var log := FileAccess.get_file_as_bytes(OS.get_user_data_dir().path_join("logs/godot.log"))
+	if not log.is_empty():
+		files["godot.log"] = log
+	var ini := FileAccess.get_file_as_bytes(UnrealSettings.path())
+	if not ini.is_empty():
+		files["settings.ini"] = ini
+	if recording != "":
+		files["recording.txt"] = recording.to_utf8_buffer()
+	var picture: Image = get_viewport().get_texture().get_image() if get_viewport().get_texture() else null	# (none with no window: a headless test)
+	if picture:
+		files["picture.png"] = picture.save_png_to_buffer()
+	var folder := OS.get_system_dir(OS.SYSTEM_DIR_DOCUMENTS).path_join("Open-Planet/Bug reports")
+	DirAccess.make_dir_recursive_absolute(folder)
+	var path := folder.path_join("Bug report %s.zip" % Time.get_datetime_string_from_system().replace(":", "-").replace("T", " "))
+	var zip := ZIPPacker.new()
+	if zip.open(path) != OK:
+		return ""
+	for name in files:
+		zip.start_file(name)
+		zip.write_file(files[name])
+		zip.close_file()
+	zip.close()
+	print("Geodrive: bug report saved: ", path)
+	return path
 
 
 func _save(path: String) -> void:

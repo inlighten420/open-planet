@@ -80,6 +80,9 @@ namespace georoads
 		/** A tunnel through the ground: its heights run straight between its portals */
 		bool bTunnel = false;
 
+		/** Part of a roundabout's ring (junction=roundabout): every road joining it levels out before it */
+		bool bRoundabout = false;
+
 		/** The OSM highway class ("trunk", "residential", "motorway_link"...) */
 		std::string Highway;
 
@@ -92,6 +95,9 @@ namespace georoads
 		/** The OSM way this piece is from and its number along it */
 		int64_t WayId = 0;
 		int32_t WayPart = 0;
+
+		/** A ramp given a longer line than the map's to fit its rules (RerouteRamps): how far its join moved (cm, 0: as mapped) */
+		float Rerouted = 0.0f;
 
 		/** Where a road carries straight on as a wider or narrower one (no junction), the two ease into each other instead
 		 *  of stepping: at this end it's wider (+) or narrower by this much (cm of half width, and of each shoulder),

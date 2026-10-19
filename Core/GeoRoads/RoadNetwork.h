@@ -56,6 +56,9 @@ namespace georoads
 		/** Ease width changes where a road carries on wider or narrower (off only to compare with the old steps) */
 		bool bTapers = true;
 
+		/** The land's ways (optional): a street lined by buildings is measured between them for its width */
+		const OsmData* Land = nullptr;
+
 		LogFn Log;
 	};
 

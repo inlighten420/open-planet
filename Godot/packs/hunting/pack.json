@@ -1,9 +1,10 @@
 {
 	"name": "Hunting",
-	"about": "Game farms and hunting: 19 South African species, three rifles and a compound bow. Hunts happen at the world's game reserves, or any area you mark with the game maker.",
+	"about": "Game farms and hunting: Bergyface Game Farm (modelled on a real farm off the R328 near Hartenbos), its ticket kiosk at the main gate, its stock (19 South African species), three rifles and a compound bow.",
 	"sources": [
 		"The animals: adults' typical figures (mass: the sexes' mean); speeds: a walk, and the flat-out run they keep up for a while.",
 		"Seasons and daily bags: the Western Cape's annual hunting notice for 2025 (Provincial Gazette notice 126 of 2024), the Mossel Bay district. The lion, rhino, buffalo, hippo, giraffe and Cape mountain zebra aren't in it: protected, never hunted here. Kudu is in it, but not for the Mossel Bay district: closed here.",
-		"The rifles: factory loads' published figures (a 24-inch barrel), zeroed at 100 m. The bow: a 70 lb compound at a 30-inch draw with a 425 gr arrow (~285 fps), its sight pin set at 20 m."
+		"The rifles: factory loads' published figures (a 24-inch barrel), zeroed at 100 m. The bow: a 70 lb compound at a 30-inch draw with a 425 gr arrow (~285 fps), its sight pin set at 20 m.",
+		"The farm's outline: the Chief Surveyor General's cadastre (Western Cape Government's service, 2026-05-05)."
 	]
 }

@@ -1,0 +1,29 @@
+# Giratoire Canton, the roundabout under Monaco (43.7321, 7.4167), drawn 2026-10-19.
+# Shows: Tunnel Dsc Fontvieille (168) leaves the circle further west and runs beside the main tunnel road (280), not under
+# it; the ramp onto the Dorsale (1401) runs on beside it before joining. The circle itself is much wider in reality
+# (a big pillar in the middle): the generator now widens underground roundabouts to fit their roads.
+Open-Planet road edits near 43.732080, 7.416514 (3 roads; each road's new line from its start: lat, lon, m above the sea):
+road 1270 unnamed road (primary), layer -1, tunnel, 9.5 m wide, junctions 1145 -> 387: moved up to 0.5 m sideways, +0.0 m up or down
+    43.732025, 7.416607, 24.0; 43.731951, 7.416618, 24.6; 43.731904, 7.416674, 25.0
+road 1401 unnamed road (primary_link), layer -2, tunnel, 5.7 m wide, junctions 691 -> 1250: moved up to 5.5 m sideways, +0.0 m up or down
+    43.732160, 7.416989, 20.1; 43.732236, 7.417038, 20.9; 43.732268, 7.417060, 21.2; 43.732310, 7.417093, 21.2; 43.732384, 7.417144, 21.2; 43.732422, 7.417170, 21.1; 43.732483, 7.417210, 20.9; 43.732542, 7.417164, 20.9
+# Road 168 redrawn later the same day (this one replaces the first drawing of it):
+Open-Planet road edits near 43.731753, 7.416073 (1 roads). Drawn by hand in the game: a guideline of where the roads should go and how high, not exact lines. Each road's new line from its start: lat, lon, m above the sea.
+road 168 Tunnel Dsc Fontvieille (tertiary), layer -2, tunnel, 8.3 m wide, junctions 244 -> 54: 18 -> 18 points, up to 11.2 m from the game's line, -0.7 m up or down
+    43.731953, 7.416503, 23.5; 43.731907, 7.416450, 22.8; 43.731855, 7.416391, 22.1; 43.731818, 7.416351, 21.4; 43.731749, 7.416260, 20.8; 43.731690, 7.416225, 20.2; 43.731566, 7.416223, 19.5; 43.731461, 7.416220, 18.9; 43.731379, 7.416219, 18.2; 43.731299, 7.416221, 17.6; 43.731218, 7.416228, 16.9; 43.731145, 7.416220, 16.3; 43.731081, 7.416169, 15.7; 43.731016, 7.416090, 14.9; 43.730952, 7.416011, 14.3; 43.730887, 7.415933, 13.6; 43.730823, 7.415855, 13.0; 43.730791, 7.415816, 12.7
+# Drawn again 2026-10-19 (evening): 168 with heights now (it drops faster from the circle, -1.9 m), the ramp onto the
+# Dorsale (1401) taken further on beside it before it joins (up to 17 m), heights rough. A guideline: the user wants it to
+# "flow from there, go down straight, bend left, and then connect up with the other road".
+Open-Planet road edits near 43.731488, 7.416673 (5 roads). Drawn by hand in the game: a guideline of where the roads should go and how high, not exact lines. Each road's new line from its start: lat, lon, m above the sea.
+road 168 Tunnel Dsc Fontvieille (tertiary), layer -2, tunnel, 8.3 m wide, junctions 244 -> 54: 19 -> 19 points, up to 4.2 m from the game's line, -1.9 m up or down
+    43.731953, 7.416503, 24.7; 43.731915, 7.416431, 24.6; 43.731852, 7.416356, 23.4; 43.731794, 7.416284, 22.5; 43.731732, 7.416240, 21.9; 43.731663, 7.416200, 20.7; 43.731582, 7.416210, 18.7; 43.731502, 7.416200, 18.3; 43.731445, 7.416198, 18.6; 43.731390, 7.416206, 18.5; 43.731331, 7.416197, 17.9; 43.731261, 7.416185, 17.1; 43.731191, 7.416182, 16.4; 43.731122, 7.416146, 15.7; 43.731024, 7.416087, 14.9; 43.730952, 7.416011, 14.3; 43.730887, 7.415933, 13.7; 43.730823, 7.415855, 13.0; 43.730791, 7.415816, 12.7
+road 1401 unnamed road (primary_link), layer -2, tunnel, 5.7 m wide, junctions 691 -> 1250: 8 -> 9 points, up to 17.2 m from the game's line, +2.2 m up or down
+    43.732160, 7.416989, 21.9; 43.732238, 7.417039, 22.6; 43.732276, 7.417075, 22.8; 43.732319, 7.417104, 22.5; 43.732409, 7.417171, 22.2; 43.732511, 7.417239, 23.9; 43.732641, 7.417303, 21.8; 43.732672, 7.417280, 21.7; 43.732546, 7.417166, 21.7
+# Road 168 drawn once more (2026-10-19, late), heights left as the game had them: the line out of the circle eased.
+Open-Planet road edits near 43.731828, 7.416396 (1 roads). Drawn by hand in the game: a guideline of where the roads should go and how high, not exact lines. Each road's new line from its start: lat, lon, m above the sea.
+road 168 Tunnel Dsc Fontvieille (tertiary), layer -2, tunnel, 8.3 m wide, junctions 244 -> 54: 19 -> 19 points, up to 2.4 m from the game's line, +0.0 m up or down
+    43.731953, 7.416503, 24.7; 43.731893, 7.416446, 23.9; 43.731842, 7.416392, 23.2; 43.731791, 7.416318, 22.5; 43.731737, 7.416264, 21.9; 43.731678, 7.416224, 21.2; 43.731592, 7.416223, 20.5; 43.731514, 7.416226, 19.9; 43.731445, 7.416238, 19.2; 43.731374, 7.416225, 18.6; 43.731299, 7.416221, 17.9; 43.731218, 7.416228, 17.1; 43.731145, 7.416220, 16.4; 43.731081, 7.416169, 15.7; 43.731016, 7.416090, 14.9; 43.730952, 7.416011, 14.3; 43.730887, 7.415933, 13.7; 43.730823, 7.415855, 13.0; 43.730791, 7.415816, 12.7
+# Road 168 drawn again (2026-10-19, night), after the rule moved it: up to 8.2 m from the game's line, 0.5 m lower.
+Open-Planet road edits near 43.732058, 7.416698 (1 roads). Drawn by hand in the game: a guideline of where the roads should go and how high, not exact lines. Each road's new line from its start: lat, lon, m above the sea.
+road 168 Tunnel Dsc Fontvieille (tertiary), layer -2, tunnel, 8.3 m wide, junctions 244 -> 54: 20 -> 20 points, up to 8.2 m from the game's line, -0.5 m up or down
+    43.731953, 7.416503, 22.6; 43.731915, 7.416414, 22.0; 43.731840, 7.416363, 21.3; 43.731769, 7.416311, 20.4; 43.731714, 7.416276, 20.0; 43.731649, 7.416261, 19.7; 43.731579, 7.416253, 19.2; 43.731503, 7.416247, 18.7; 43.731416, 7.416234, 18.1; 43.731335, 7.416226, 17.6; 43.731262, 7.416226, 17.1; 43.731191, 7.416221, 16.6; 43.731125, 7.416197, 16.1; 43.731065, 7.416149, 15.6; 43.731009, 7.416086, 15.1; 43.730951, 7.416012, 14.4; 43.730904, 7.415951, 13.9; 43.730870, 7.415908, 13.5; 43.730825, 7.415853, 13.0; 43.730791, 7.415816, 12.6

@@ -208,10 +208,17 @@ namespace geotile
 				{
 					const std::string Url = "https://copernicus-dem-30m.s3.amazonaws.com/" + Name + "/" + Name + ".tif";
 					const std::string Command = "curl.exe -s -f -L --retry 3 -m 900 -o \"" + Path + ".part\" \"" + Url + "\"";
-					if (std::system(Command.c_str()) != 0)
+					const int Result = std::system(Command.c_str());
+					if (Result != 0)
 					{
 						std::error_code Ignored;
 						std::filesystem::remove(Path + ".part", Ignored);
+						if (Result != 22)
+						{
+							// (curl 22: the server answered "no such tile", as over the sea; anything else is the connection, and
+							// isn't remembered as sea: the tiles got so far are kept for the same again to carry on)
+							throw std::runtime_error("no connection for the heights of " + Name + " (curl " + std::to_string(Result) + ")");
+						}
 						std::printf("  %zu of %zu: %s not there (sea)\n", Done, Cells.size(), Name.c_str());
 						continue;
 					}

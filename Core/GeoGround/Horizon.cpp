@@ -53,7 +53,23 @@ namespace geoground
 			}
 			Colour = Lerp(Colour, RockColor, std::clamp((0.86f - Normal.Z) / 0.1f, 0.0f, 1.0f));	// rock on steep slopes
 			const Vec2 P = At(X, Y) - Options.Centre;
-			Out.Positions.push_back(Vec3f(float(P.X), float(P.Y), Height - Options.Sink));
+			// (it sits Sink below the raster so the built ground is on top where they meet, but land is never sunk under the
+			// water: in flat country like a river delta most of it is a few metres high, and 15 m down it was all sea)
+			// how much to sink it: by how rough the ground round it is (a 120 m raster misses a finer ground's valleys, which would
+			// otherwise be filled by this), 4.5 m on flat land (the distant blocks are 3 m down) to the full Sink on mountains
+			float Low = Height, High = Height;
+			for (int32_t DX = -2; DX <= 2; ++DX)
+			{
+				for (int32_t DY = -2; DY <= 2; ++DY)
+				{
+					const float Near = H(X + DX, Y + DY);
+					Low = std::min(Low, Near);
+					High = std::max(High, Near);
+				}
+			}
+			const float Sunk = std::clamp((High - Low) + 450.0f, 450.0f, Options.Sink);
+			const float Down = std::min(Sunk, std::max(Height - 30.0f, 0.0f));
+			Out.Positions.push_back(Vec3f(float(P.X), float(P.Y), Height - Down));
 			Out.Normals.push_back(Normal);
 			Out.UVs.push_back(Vec2f());
 			Out.Colors.push_back(Colour);
@@ -78,6 +94,73 @@ namespace geoground
 				}
 				if (bBuilt)
 				{
+					continue;
+				}
+				// the shore runs through this square (the land crosses sea level in it): cut finer, the raster sampled at each new corner,
+				// so the coast is a curve at the raster's own detail and not a chain of straight 300 m lines
+				const float LowH = std::min(std::min(H(X, Y), H(X + 1, Y)), std::min(H(X, Y + 1), H(X + 1, Y + 1)));
+				const float HighH = std::max(std::max(H(X, Y), H(X + 1, Y)), std::max(H(X, Y + 1), H(X + 1, Y + 1)));
+				if (LowH < 0.0f && HighH > 0.0f)
+				{
+					constexpr int32_t Sub = 6;
+					const double Step = S / Sub;
+					float Relief = 0.0f;
+					{
+						float Low = H(X, Y), High = H(X, Y);
+						for (int32_t DX = -2; DX <= 3; ++DX)
+						{
+							for (int32_t DY = -2; DY <= 3; ++DY)
+							{
+								Low = std::min(Low, H(X + DX, Y + DY));
+								High = std::max(High, H(X + DX, Y + DY));
+							}
+						}
+						Relief = High - Low;
+					}
+					const float Sunk = std::clamp(Relief + 450.0f, 450.0f, Options.Sink);
+					std::vector<float> Fine(size_t(Sub + 1) * size_t(Sub + 1));
+					auto F = [&](int32_t I, int32_t J) -> float& { return Fine[size_t(I) * size_t(Sub + 1) + size_t(J)]; };
+					auto FineAt = [&](int32_t I, int32_t J) { return Options.Centre + Vec2((X - Half) * S + I * Step, (Y - Half) * S + J * Step); };
+					for (int32_t I = 0; I <= Sub; ++I)
+					{
+						for (int32_t J = 0; J <= Sub; ++J)
+						{
+							double Lat = 0.0, Lon = 0.0;
+							Projection.ToLatLon(FineAt(I, J), Lat, Lon);
+							F(I, J) = Raster.Sample(Lat, Lon) * 100.0f;
+						}
+					}
+					auto FineVertex = [&](int32_t I, int32_t J)
+					{
+						const float Height = F(I, J);
+						const int32_t I0 = std::max(I - 1, 0), I1 = std::min(I + 1, Sub), J0 = std::max(J - 1, 0), J1 = std::min(J + 1, Sub);
+						const Vec3f Normal = Vec3f(-(F(I1, J) - F(I0, J)) / float(I1 - I0), -(F(I, J1) - F(I, J0)) / float(J1 - J0), static_cast<float>(Step)).Normal();
+						Vec4f Colour = GrassColor;
+						if (Height < 0.0f)
+						{
+							Colour = SeabedColor;
+						}
+						else if (Height < 300.0f)
+						{
+							Colour = Lerp(SandColor, GrassColor, Height / 300.0f);
+						}
+						Colour = Lerp(Colour, RockColor, std::clamp((0.86f - Normal.Z) / 0.1f, 0.0f, 1.0f));
+						const Vec2 P = FineAt(I, J) - Options.Centre;
+						const float Down = std::min(Sunk, std::max(Height - 30.0f, 0.0f));
+						Out.Positions.push_back(Vec3f(float(P.X), float(P.Y), Height - Down));
+						Out.Normals.push_back(Normal);
+						Out.UVs.push_back(Vec2f());
+						Out.Colors.push_back(Colour);
+						return int32_t(Out.Positions.size()) - 1;
+					};
+					for (int32_t I = 0; I < Sub; ++I)
+					{
+						for (int32_t J = 0; J < Sub; ++J)
+						{
+							const int32_t A0 = FineVertex(I, J), B0 = FineVertex(I + 1, J), C0 = FineVertex(I + 1, J + 1), D0 = FineVertex(I, J + 1);
+							Out.Indices.insert(Out.Indices.end(), { A0, D0, C0, A0, C0, B0 });
+						}
+					}
 					continue;
 				}
 				const int32_t A = Vertex(X, Y), B = Vertex(X + 1, Y), C = Vertex(X + 1, Y + 1), D = Vertex(X, Y + 1);

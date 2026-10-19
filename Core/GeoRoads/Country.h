@@ -22,6 +22,7 @@ namespace georoads
 		SouthAfrica,	// the CSIR Red Book's cross-sections; yellow edge lines on shoulders
 		UK,				// DMRB and Manual for Streets cross-sections, national limits by road type, the UK's markings
 		Europe,			// South Africa's sizes, every line white (the Vienna Convention's)
+		US,				// North America's (MUTCD): yellow centre lines and left edges of one-way roads, white right edges
 	};
 
 	struct CountryRules

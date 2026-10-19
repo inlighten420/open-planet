@@ -13,7 +13,7 @@ class_name WorldMap
 extends CanvasLayer
 
 signal travel_requested(lat: float, lon: float, place_name: String)
-signal download_requested(lat: float, lon: float, place_name: String)
+signal download_requested(lat: float, lon: float, place_name: String, km: float, play: bool)	# (km: 0 for the whole region, else just that far round the spot)
 signal delete_requested(stem: String)
 signal closed
 
@@ -34,6 +34,8 @@ static var _loading_task := -1
 static var _extracts: Array = []	# Geofabrik's: {id, name, rings [PackedVector2Array lon,lat], box Rect2, area}
 static var _extracts_task := -1
 static var _extracts_read: Array = []
+static var _extracts_fetching := false	# (the list of places is being downloaded: the first time, or the file was missing)
+static var _extracts_failed := false
 
 # set by main before opening: where the car is and the area that's built
 var has_car := false
@@ -72,6 +74,7 @@ var _places_task := -1
 var _have := {}	# region file names (south_africa) you have
 var _hover := -1	# the extract under the mouse
 var _chosen := -1	# the one clicked
+var _pick := {}	# (a town chosen, searched for or clicked near: {name, lat, lon, km}: what a small download is round)
 var _chosen_at := Vector2.ZERO	# (lat, lon) where
 
 # the pictures: worldmap.bin's index, and the tiles decoded (key -> ImageTexture), being decoded, decoded waiting
@@ -186,6 +189,7 @@ func open() -> void:
 	_user_moved = false
 	_hover = -1
 	_chosen = -1
+	_pick = {}
 	_show_choice()
 	if has_car:
 		# over the car, at a regional scale
@@ -244,6 +248,10 @@ func close() -> void:
 
 
 func _note_text() -> String:
+	if _extracts.is_empty():
+		if _extracts_failed:
+			return "Couldn't get the list of places to download (is the internet on?). Close and open the map to try again."
+		return "Getting the list of places you can download... (a few seconds the first time; you can still click towns you have)"
 	if index.is_empty():
 		return "You haven't any places yet. Click anywhere on the map and download it: the game fetches its roads and heights, then takes you there."
 	return "Your places are outlined green. Click a town to go there, or anywhere to download that part of the world."
@@ -457,6 +465,7 @@ func _process(delta: float) -> void:
 		_extracts = _extracts_read
 		_timed("extracts taken", t0)
 		print("Geodrive: the world map: %d parts of the world to download" % _extracts.size())
+		_note.text = _note_text()
 		_canvas.queue_redraw()
 	# tiles decoded on workers: made textures, a dozen a frame at most (~0.15 ms each)
 	_decoded_lock.lock()
@@ -581,14 +590,24 @@ func _read_extracts() -> void:
 	var path := GameSettings.cache_dir().path_join("downloads/geofabrik-index-outlines.json")
 	if not FileAccess.file_exists(path):
 		# (fetched once, as geotile does: Geofabrik's list with each extract's outline, 3.8 MB)
+		if _extracts_fetching:
+			return
+		_extracts_fetching = true
+		_extracts_failed = false
 		DirAccess.make_dir_recursive_absolute(path.get_base_dir())
 		var request := HTTPRequest.new()
 		request.download_file = path
 		add_child(request)
 		request.request_completed.connect(func(result: int, _code: int, _headers: PackedStringArray, _body: PackedByteArray):
 			request.queue_free()
+			_extracts_fetching = false
 			if result == HTTPRequest.RESULT_SUCCESS:
-				_read_extracts())
+				_read_extracts()
+			else:
+				DirAccess.remove_absolute(path)	# (no half a file left to be read next time)
+				_extracts_failed = true
+				if is_instance_valid(_note) and visible:
+					_note.text = _note_text())
 		request.request("https://download.geofabrik.de/index-v1.json")
 		return
 	_extracts_task = WorkerThreadPool.add_task(func():
@@ -645,21 +664,57 @@ func _draw_extract(i: int, colour: Color, width: float) -> void:
 		_canvas.draw_polyline(points, colour, width, true)
 
 
-# The panel's part for the part of the world chosen: its name; Go there and Delete if you have it, else Download
+# How far round a place a small download goes, by its size (km)
+const SMALL_KM := [10.0, 7.0, 5.0, 4.0, 4.0]
+
+# The town a click is nearest (within 30 km) as a small download's centre; else the spot itself, named by where it is
+func _pick_near(spot: Vector2) -> Dictionary:
+	var best := -1
+	var best_km := 30.0
+	for i in _places.size():
+		var p: Array = _places[i]
+		var km := Vector2(float(p[1]) - spot.x, (float(p[2]) - spot.y) * cos(deg_to_rad(spot.x))).length() * 111.32
+		if km < best_km:
+			best_km = km
+			best = i
+	if best >= 0:
+		var p: Array = _places[best]
+		return {"name": p[0], "lat": float(p[1]), "lon": float(p[2]), "km": SMALL_KM[clampi(int(p[3]), 0, 4)]}
+	return {"name": "%.2f %s, %.2f %s" % [absf(spot.x), "S" if spot.x < 0 else "N", absf(spot.y), "W" if spot.y < 0 else "E"], "lat": spot.x, "lon": spot.y, "km": 6.0}
+
+
+# A town from the search (one of the world's, not yet downloaded): the map goes to it and the panel offers its downloads
+func _choose_place(p: Array) -> void:
+	_look_at(float(p[1]), float(p[2]))
+	_chosen_at = Vector2(float(p[1]), float(p[2]))
+	_chosen = _extract_at(_chosen_at.x, _chosen_at.y)
+	_pick = {"name": p[0], "lat": float(p[1]), "lon": float(p[2]), "km": SMALL_KM[clampi(int(p[3]), 0, 4)]}
+	_show_choice()
+	_canvas.queue_redraw()
+
+
+# The panel's part for what was chosen: its name; Go there and Delete if you have it, else Download: just the town
+# (a few MB, a minute) or the whole region it's in (hundreds of MB)
 func _show_choice() -> void:
 	for child in _choice.get_children():
 		child.queue_free()
-	if _chosen < 0:
+	if _chosen < 0 and _pick.is_empty():
 		return
-	var e: Dictionary = _extracts[_chosen]
-	var stem := stem_of(e["id"])
-	var have := _have.has(stem)
-	_choice.add_child(_text(e["name"], 20, CHOSEN, true))
-	_choice.add_child(_text("You have it" if have else "Not downloaded yet", 14, Color(0.6, 0.9, 0.6) if have else Color(0.75, 0.75, 0.75), false))
+	var e: Dictionary = _extracts[_chosen] if _chosen >= 0 and _chosen < _extracts.size() else {}
+	var stem := stem_of(e["id"]) if not e.is_empty() else ""
+	var have := stem != "" and _have.has(stem)
+	var spot: Vector2 = _chosen_at
+	_choice.add_child(_text(_pick.get("name", e.get("name", "")), 20, CHOSEN, true))
+	if e.is_empty():
+		_choice.add_child(_text("Nothing to download here (out at sea?)", 14, Color(0.75, 0.75, 0.75), false))
+		return
+	var note := ("You have %s" % e["name"]) if have else ("Not downloaded yet (it's in %s)" % e["name"])
+	var line := _text(note, 14, Color(0.6, 0.9, 0.6) if have else Color(0.75, 0.75, 0.75), false)
+	line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_choice.add_child(line)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
 	_choice.add_child(row)
-	var spot: Vector2 = _chosen_at
 	if have:
 		_choice_button(row, "Go there", func():
 			travel_requested.emit(spot.x, spot.y, e["name"])
@@ -669,8 +724,30 @@ func _show_choice() -> void:
 			_have.erase(stem)
 			_show_choice())
 	else:
-		_choice_button(row, "Download", func():
-			download_requested.emit(spot.x, spot.y, e["name"])
+		# (each size has Download, which just fetches it, and Download and play, which takes you there when it's done)
+		if not _pick.is_empty():
+			var pick := _pick
+			var small := _text("Just %s (%d km round it: small)" % [pick["name"], roundi(pick["km"])], 15, Color(0.92, 0.93, 0.95), false)
+			small.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			_choice.add_child(small)
+			var small_row := HBoxContainer.new()
+			small_row.add_theme_constant_override("separation", 6)
+			_choice.add_child(small_row)
+			_choice_button(small_row, "Download", func():
+				download_requested.emit(pick["lat"], pick["lon"], pick["name"], pick["km"], false))
+			_choice_button(small_row, "Download and play", func():
+				download_requested.emit(pick["lat"], pick["lon"], pick["name"], pick["km"], true)
+				close())
+		var whole := _text("All of %s (big)" % e["name"], 15, Color(0.92, 0.93, 0.95), false)
+		whole.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_choice.add_child(whole)
+		var whole_row := HBoxContainer.new()
+		whole_row.add_theme_constant_override("separation", 6)
+		_choice.add_child(whole_row)
+		_choice_button(whole_row, "Download", func():
+			download_requested.emit(spot.x, spot.y, e["name"], 0.0, false))
+		_choice_button(whole_row, "Download and play", func():
+			download_requested.emit(spot.x, spot.y, e["name"], 0.0, true)
 			close())
 
 
@@ -834,12 +911,13 @@ func _click(at: Vector2) -> void:
 	var spot := _to_lat_lon(at)
 	_chosen = _extract_at(spot.x, spot.y)
 	_chosen_at = spot
+	_pick = _pick_near(spot)
 	_show_choice()
 	_canvas.queue_redraw()
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if visible and event is InputEventKey and event.pressed and not event.echo and event.keycode in [KEY_ESCAPE, KEY_TAB, KEY_M]:
+	if visible and event is InputEventKey and event.pressed and not event.echo and (event.keycode in [KEY_ESCAPE, KEY_TAB, KEY_M] or Controls.hit(event, "map")):
 		get_viewport().set_input_as_handled()
 		close()
 
@@ -876,10 +954,43 @@ func _rebuild_list() -> void:
 		button.add_theme_font_size_override("font_size", 15 if rank <= 1 else 14)
 		button.pressed.connect(_travel.bind(i))
 		_list.add_child(button)
-	if found.is_empty() and not index.is_empty():
-		var none := _text("Zoom in on one of your places to see its towns." if _search == "" else "No place of yours by that name.", 14, Color(0.7, 0.7, 0.7), false)
+	# (searching: the world's other towns too, the ones not downloaded yet: click one for its downloads)
+	var more := _search_world(found)
+	if found.is_empty() and more == 0 and not index.is_empty():
+		var none := _text("Zoom in on one of your places to see its towns." if _search == "" else "No town by that name.", 14, Color(0.7, 0.7, 0.7), false)
 		none.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		_list.add_child(none)
+
+
+# Buttons for the world's towns matching the search that aren't among yours (the biggest first); how many
+func _search_world(yours: PackedInt32Array) -> int:
+	if _search.length() < 2 or _places.is_empty():
+		return 0
+	var needle := _search.to_lower()
+	var mine := {}
+	for i in yours:
+		mine[index.place_name(i).to_lower()] = true
+	var matches := []
+	for p in _places:
+		var place_name: String = p[0]
+		if place_name.to_lower().contains(needle) and not mine.has(place_name.to_lower()):
+			matches.append(p)
+	matches.sort_custom(func(a, b): return int(a[3]) < int(b[3]) or (int(a[3]) == int(b[3]) and float(a[4]) > float(b[4])))
+	if matches.is_empty():
+		return 0
+	_list.add_child(_text("Not downloaded yet", 14, GameMenu.HEADING, true))
+	for p in matches.slice(0, 40):
+		var rank := clampi(int(p[3]), 0, 4)
+		var population := int(p[4])
+		var button := Button.new()
+		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		button.text = "%s
+%s%s" % [p[0], KINDS[rank], (", %s people" % _thousands(population)) if population > 0 else ""]
+		button.add_theme_font_override("font", _bold if rank <= 1 else _regular)
+		button.add_theme_font_size_override("font_size", 15 if rank <= 1 else 14)
+		button.pressed.connect(_choose_place.bind(p))
+		_list.add_child(button)
+	return mini(matches.size(), 40)
 
 
 func _thousands(number: int) -> String:

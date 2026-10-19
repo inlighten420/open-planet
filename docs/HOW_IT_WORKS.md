@@ -5,6 +5,11 @@ The ideas behind it, for anyone who wants to help build it. For the detail of ea
 The short version: **open map data goes in, a walkable, drivable, flyable world comes out, built round the player as they
 move, and everything people make in it is plain files that can be shared.**
 
+**Nothing is pre-rendered.** The files hold only compact data (road and building outlines, ground heights, land cover).
+The game builds the 3D world from them as you move, once for each piece you get near, and throws the pieces away when you
+leave. That is why a region is a few hundred MB and why changing a setting never means making files again. For the longer
+version, for developers: [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md).
+
 ## 1. The layers
 
 ```

@@ -148,6 +148,8 @@ namespace geoworld
 		 *  and kerbs with a raised pavement on town roads */
 		bool bFollowLand = true;
 		bool bKerbs = true;
+		/** The truth test: the roads solved as if there were no fine heights (LiDAR), which are then measured against them */
+		bool bTruth = false;
 
 		/** Scan every road for bumps, jumps and holes once its surfaces are made (RoadScan.h) */
 		bool bScanRoads = false;

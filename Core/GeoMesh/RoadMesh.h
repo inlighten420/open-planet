@@ -19,6 +19,14 @@ namespace geomesh
 	using geoground::MeshData;
 	using georoads::RoadGraph;
 
+	/** A junction's paved area (its corners in order, round its middle, with the rounded kerb corners) and how high it is (cm) */
+	struct JunctionArea
+	{
+		std::vector<georoads::Vec2> Corners;
+		georoads::Vec2 Centre;
+		float Height = 0.0f;
+	};
+
 	struct MeshOptions
 	{
 		/** UK road markings (TSM ch. 5) instead of South African ones */
@@ -27,6 +35,11 @@ namespace geomesh
 		bool bDriveLeft = true;
 		/** Edge lines white, not yellow (most of the world) */
 		bool bWhiteEdges = false;
+		/** North America's lines (MUTCD): the centre line yellow, edge lines white, a one-way road's left edge yellow */
+		bool bYellowCentre = false;
+
+		/** The junction areas the road meshes made, so buildings keep out of them (BuildBuildings only) */
+		const std::vector<JunctionArea>* Junctions = nullptr;
 
 		/** The host's job system (empty: plain threads) and log (empty: quiet) */
 		georoads::ParallelForFn ParallelFor;
@@ -48,6 +61,9 @@ namespace geomesh
 
 		int32_t NumJunctions = 0;
 		int32_t NumJunctionAreas = 0;
+
+		/** Every junction's paved area (for the buildings to be cut away from) */
+		std::vector<JunctionArea> Junctions;
 	};
 
 	/** Road ribbons, junction surfaces, skirts, gap paving, dead-end caps and markings (edge Heights must be filled) */
@@ -57,7 +73,7 @@ namespace geomesh
 	void ApplySurface(const georoads::RoadSurface& Surface, MeshData& Mesh, float Offset, const georoads::ParallelForFn& ParallelFor);
 
 	/** The same for road skirts (built as pairs of triangles hanging Depth below the road edge) */
-	void ApplySurfaceToSkirts(const georoads::RoadSurface& Surface, MeshData& Skirts, float Offset, float Depth, const georoads::ParallelForFn& ParallelFor);
+	void ApplySurfaceToSkirts(const georoads::RoadSurface& Surface, MeshData& Skirts, float Offset, float Depth, const std::vector<std::vector<std::pair<georoads::Vec2, float>>>& Rooms, const georoads::ParallelForFn& ParallelFor);
 
 	/** The painted lines on the roads, SA or UK rules (StartTrim / EndTrim: where each road meets its junction surfaces) */
 	void BuildMarkings(const RoadGraph& Graph, const georoads::RoadSurface& Surface, const std::vector<double>& StartTrim, const std::vector<double>& EndTrim,

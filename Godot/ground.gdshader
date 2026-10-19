@@ -9,7 +9,7 @@
 // from ~20 degrees), and rock on steeper ones (from ~30 degrees) before they're steep enough for bare rock. Past the near detail, the same textures at eight times the size give the
 // middle distance some grain; far off only the noise's colours are left. ground.gd sets it up.
 shader_type spatial;
-render_mode blend_mix, depth_draw_opaque, cull_back, diffuse_burley, specular_schlick_ggx;
+render_mode blend_mix, depth_draw_opaque, cull_disabled, diffuse_burley, specular_schlick_ggx;
 
 uniform sampler2D grass_color : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D grass_normal : hint_normal, filter_linear_mipmap_anisotropic, repeat_enable;
@@ -195,4 +195,10 @@ void fragment() {
 	ROUGHNESS = mix(0.95, 0.85, rock);
 	SPECULAR = 0.35;	// (grass, earth and rock hardly shine)
 	NORMAL = normalize((VIEW_MATRIX * vec4(bumped, 0.0)).xyz);
+	// seen from underneath (in a tunnel, a cutting under a cliff, a dense city's stacked roads): solid dark earth, not a hole
+	// to see out of the planet through
+	if (!FRONT_FACING) {
+		ALBEDO = vec3(0.16, 0.13, 0.10);
+		NORMAL = -NORMAL;
+	}
 }

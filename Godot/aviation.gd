@@ -514,17 +514,17 @@ func _controls(delta: float) -> Dictionary:
 	var yaw := 0.0
 	var brakes := 0.0
 	if keys:
-		pitch = float(Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN)) - float(Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP))
-		roll = float(Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT)) - float(Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT))
-		yaw = float(Input.is_key_pressed(KEY_E)) - float(Input.is_key_pressed(KEY_Q))
+		pitch = Controls.axis("forward", "back")
+		roll = Controls.axis("left", "right")
+		yaw = Controls.axis("gear_down", "gear_up")
 		var pad: int = WALKER.gamepad()
-		brakes = float(Input.is_key_pressed(KEY_SPACE) or (pad >= 0 and Input.is_joy_button_pressed(pad, JOY_BUTTON_A)))
+		brakes = float(Controls.down("jump") or (pad >= 0 and Input.is_joy_button_pressed(pad, JOY_BUTTON_A)))
 		var stick := Vector2(Input.get_joy_axis(pad, JOY_AXIS_LEFT_X), Input.get_joy_axis(pad, JOY_AXIS_LEFT_Y)) if pad >= 0 else Vector2.ZERO
 		if stick.length() > 0.12:
 			roll = stick.x
 			pitch = stick.y	# (pulled back: nose up)
-		var up := float(Input.is_key_pressed(KEY_SHIFT))
-		var down := float(Input.is_key_pressed(KEY_CTRL))
+		var up := float(Controls.down("run"))
+		var down := float(Controls.down("sprint"))
 		if pad >= 0:
 			yaw += float(Input.is_joy_button_pressed(pad, JOY_BUTTON_RIGHT_SHOULDER)) - float(Input.is_joy_button_pressed(pad, JOY_BUTTON_LEFT_SHOULDER))
 			up += Input.get_joy_axis(pad, JOY_AXIS_TRIGGER_RIGHT)
@@ -599,35 +599,39 @@ func _cruise_controls(delta: float) -> Dictionary:
 
 # A key while flying (main passes them on); true if it was taken
 func key(code: Key) -> bool:
-	if aircraft.is_crashed() and code == KEY_R:
+	return act(Controls.actions_for(code))
+
+
+# The actions of a key (or a gamepad button) while flying; true if one was taken
+func act(actions: Array) -> bool:
+	if aircraft.is_crashed() and actions.has("flaps_down"):
 		recover()
 		return true
 	var names: PackedStringArray = aircraft.get_flap_names()
-	match code:
-		KEY_G:
-			gear_down = not gear_down
-			main.hud.set_status("Gear " + ("down" if gear_down else "up"), 1.5)
-		KEY_R:
-			flaps = mini(flaps + 1, names.size() - 1)
-			main.hud.set_status("Flaps " + names[flaps], 1.5)
-		KEY_T:
-			flaps = maxi(flaps - 1, 0)
-			main.hud.set_status("Flaps " + names[flaps], 1.5)
-		KEY_B:
-			speed_brake = not speed_brake
-			main.hud.set_status("Speed brake " + ("out" if speed_brake else "in"), 1.5)
-		KEY_C:
-			main.camera.plane_cockpit = not main.camera.plane_cockpit
-			main.hud.set_status("Cockpit" if main.camera.plane_cockpit else "Chase", 1.5)
-		_:
-			return false
+	if actions.has("fly_gear"):
+		gear_down = not gear_down
+		main.hud.set_status("Gear " + ("down" if gear_down else "up"), 1.5)
+	elif actions.has("flaps_down"):
+		flaps = mini(flaps + 1, names.size() - 1)
+		main.hud.set_status("Flaps " + names[flaps], 1.5)
+	elif actions.has("flaps_up"):
+		flaps = maxi(flaps - 1, 0)
+		main.hud.set_status("Flaps " + names[flaps], 1.5)
+	elif actions.has("speed_brake"):
+		speed_brake = not speed_brake
+		main.hud.set_status("Speed brake " + ("out" if speed_brake else "in"), 1.5)
+	elif actions.has("view"):
+		main.camera.plane_cockpit = not main.camera.plane_cockpit
+		main.hud.set_status("Cockpit" if main.camera.plane_cockpit else "Chase", 1.5)
+	else:
+		return false
 	return true
 
 
 func pad(button: JoyButton) -> bool:
 	match button:
 		JOY_BUTTON_X:
-			return key(KEY_G)
+			return act(["fly_gear"])
 		JOY_BUTTON_B:
 			var names: PackedStringArray = aircraft.get_flap_names()
 			flaps = (flaps + 1) % names.size()
