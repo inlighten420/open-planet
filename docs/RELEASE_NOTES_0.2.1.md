@@ -1,4 +1,4 @@
-# Open-Planet 0.2.1
+# Open-Planet 0.2.1 (early)
 
 A small update to 0.2: it's easier to tell us when something's wrong.
 

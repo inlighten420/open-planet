@@ -1,4 +1,4 @@
-# Open-Planet 0.2.2
+# Open-Planet 0.2.2 (early)
 
 A small update: **the game now tells you when there's a newer version.** When a new Open-Planet is out, the start screen
 shows an **Update** button at the top that opens the download page. Unzip the new one over your old folder and your maps
@@ -7,7 +7,7 @@ are kept. (Offline? Nothing changes: it just doesn't show.)
 Already have 0.1, 0.2 or 0.2.1? Unzip 0.2.2 over it, or start it from a new folder: your maps carry over either way.
 
 ---
-# Open-Planet 0.2.1
+# Open-Planet 0.2.1 (early)
 
 A small update to 0.2: it's easier to tell us when something's wrong.
 
