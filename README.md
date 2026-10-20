@@ -2,7 +2,7 @@
 
 **Welcome to your virtual planet: a place where we can all connect, play, build and create.**
 
-### [⬇ Download Open-Planet 0.2.1 for Windows (free, about 130 MB)](https://github.com/inlighten420/open-planet/releases/latest)
+### [⬇ Download the newest Open-Planet for Windows (free, about 130 MB)](https://github.com/inlighten420/open-planet/releases/latest)
 
 Unzip it anywhere and run `Open-Planet.exe`; nothing to install. (Windows may say it's an unknown app: More info, Run
 anyway.) **Try a demo** to play at once: Honolulu on Oahu (the city, its airport, the mountains and tunnels) or Monte
