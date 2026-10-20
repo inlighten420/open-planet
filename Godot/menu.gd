@@ -124,6 +124,44 @@ func _ready() -> void:
 	_content.add_theme_constant_override("separation", 6)
 	_scroll.add_child(_content)
 	visible = false
+	_check_for_update()
+
+
+var _update_version := ""	# (a newer Open-Planet on GitHub, found at start; "" when this is the newest or we're offline)
+var _update_url := ""
+
+# Once a start: asks GitHub for the newest release; if it's newer than this one, the start screen says so at the top
+func _check_for_update() -> void:
+	if DisplayServer.get_name() == "headless":
+		return
+	var request := HTTPRequest.new()
+	add_child(request)
+	request.request_completed.connect(func(result: int, code: int, _headers: PackedStringArray, body: PackedByteArray):
+		request.queue_free()
+		var latest: Variant = JSON.parse_string(body.get_string_from_utf8()) if result == HTTPRequest.RESULT_SUCCESS and code == 200 else null
+		if not (latest is Dictionary):
+			return
+		var tag := str(latest.get("tag_name", "")).trim_prefix("v")
+		if not _is_newer(tag, GameSettings.VERSION):
+			return
+		_update_version = tag
+		_update_url = str(latest.get("html_url", "https://github.com/inlighten420/open-planet/releases/latest"))
+		print("Geodrive: Open-Planet %s is out (this is %s)" % [tag, GameSettings.VERSION])
+		if visible and page == "main" and not has_area:
+			show_page("main"))
+	request.request("https://api.github.com/repos/inlighten420/open-planet/releases/latest", ["User-Agent: Open-Planet/%s (https://github.com/inlighten420/open-planet)" % GameSettings.VERSION, "Accept: application/vnd.github+json"])
+
+
+# "0.10" is newer than "0.9.1": number by number
+static func _is_newer(version: String, than: String) -> bool:
+	var a := version.split(".")
+	var b := than.split(".")
+	for i in maxi(a.size(), b.size()):
+		var x := int(a[i]) if i < a.size() else 0
+		var y := int(b[i]) if i < b.size() else 0
+		if x != y:
+			return x > y
+	return false
 
 
 func is_open() -> bool:
@@ -208,7 +246,7 @@ func show_page(new_page: String) -> void:
 
 
 func _first_button(node: Node) -> Button:
-	if node is Button:
+	if node is Button and not node.has_meta("no_focus"):
 		return node
 	for child in node.get_children():
 		var found := _first_button(child)
@@ -339,6 +377,9 @@ func _main_page() -> void:
 # friends; settings and quit small at the bottom
 func _start_page() -> void:
 	_subtitle.text = "The real world, on foot, by car or plane.    Version %s" % GameSettings.VERSION
+	if _update_version != "":
+		# (not the one Enter presses: that stays Continue)
+		_button("Update: Open-Planet %s is out" % _update_version, func(): OS.shell_open(_update_url), "You have %s. Opens the download page on GitHub; unzip it over this folder and your maps are kept" % GameSettings.VERSION, true, 24).set_meta("no_focus", true)
 	var last := UnrealSettings.last_spot()
 	if not last.is_empty():
 		_button("Continue", _drive.bind(last["lat"], last["lon"], last["name"]), "Back to " + last["name"], true, 34)
